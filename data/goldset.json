@@ -1,0 +1,66 @@
+{
+  "botanical_mocktail": {
+    "query": "Looking to host a leadership summit with a heavy focus on botanical citrus custom mocktail receptions and high-end AV.",
+    "relevant_beo_ids": [
+      "MIA-BEO00010",
+      "CHI-BEO00037",
+      "MIA-BEO00066",
+      "ORL-BEO00098",
+      "CHI-BEO00121"
+    ]
+  },
+  "vip_transport": {
+    "query": "We need seamless VIP transport and arrival logistics for about 150 executives attending a 3-day summit.",
+    "relevant_beo_ids": [
+      "CHI-BEO00023",
+      "MIA-BEO00032",
+      "CHI-BEO00061",
+      "MIA-BEO00090",
+      "CHI-BEO00134"
+    ]
+  },
+  "led_wall": {
+    "query": "Product launch requiring a large LED wall, broadcast cameras and a live stream for remote attendees.",
+    "relevant_beo_ids": [
+      "CHI-BEO00001",
+      "CHI-BEO00009",
+      "CHI-BEO00044",
+      "ORL-BEO00048",
+      "CHI-BEO00049",
+      "CHI-BEO00119",
+      "MIA-BEO00136"
+    ]
+  },
+  "sustainability": {
+    "query": "Our company requires sustainable zero-waste catering with locally sourced menus for an ESG-focused retreat.",
+    "relevant_beo_ids": [
+      "MIA-BEO00029",
+      "MIA-BEO00033",
+      "ORL-BEO00034",
+      "ORL-BEO00056",
+      "ORL-BEO00105"
+    ]
+  },
+  "kosher": {
+    "query": "Annual gala requiring a fully supervised kosher catering program.",
+    "relevant_beo_ids": [
+      "CHI-BEO00008",
+      "ORL-BEO00035",
+      "ORL-BEO00057",
+      "CHI-BEO00107",
+      "MIA-BEO00110",
+      "MIA-BEO00122"
+    ]
+  },
+  "wellness": {
+    "query": "Incentive trip with a wellness focus - morning yoga sessions and healthy juice bar options for attendees.",
+    "relevant_beo_ids": [
+      "MIA-BEO00050",
+      "ORL-BEO00054",
+      "CHI-BEO00076",
+      "CHI-BEO00101",
+      "ORL-BEO00114",
+      "ORL-BEO00128"
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+[project]
+name = "nexusvenue"
+version = "0.1.0"
+description = "GraphRAG sales intelligence for enterprise B2B hospitality — CRM ETL, entity resolution, Neo4j knowledge graph, hybrid retrieval, and LLM-as-a-judge evaluation."
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.116.0",
+    "google-genai>=1.16.0",
+    "neo4j>=5.28.0",
+    "rapidfuzz>=3.9.0",
+    "pydantic>=2.7.0",
+    "click>=8.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+nexusvenue = "nexusvenue.cli:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
