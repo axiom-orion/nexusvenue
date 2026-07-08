@@ -57,20 +57,25 @@ def _user_prompt(blueprint: dict, context: dict) -> str:
     )
 
 
+PROVIDERS = ("anthropic", "gemini", "grok")
+
+
 def judge(blueprint: dict, context: dict, provider: str | None = None) -> JudgeVerdict:
-    """Grade a blueprint. provider: "anthropic" (default) or "grok".
+    """Grade a blueprint. provider: "anthropic" (default), "gemini", or "grok".
 
     Judging with a different model family than the generator (Claude) controls
     for self-preference bias — a judge tends to grade its own family's output
-    more favorably. Run both via `nexusvenue judge-agreement` for a
+    more favorably. Run every family via `nexusvenue judge-agreement` for a
     cross-family agreement signal.
     """
     provider = provider or settings.judge_provider
-    if provider == "grok":
-        return _judge_grok(blueprint, context)
     if provider == "anthropic":
         return _judge_anthropic(blueprint, context)
-    raise ValueError(f"unknown judge provider {provider!r} (use 'anthropic' or 'grok')")
+    if provider == "gemini":
+        return _judge_gemini(blueprint, context)
+    if provider == "grok":
+        return _judge_grok(blueprint, context)
+    raise ValueError(f"unknown judge provider {provider!r} (use one of {PROVIDERS})")
 
 
 def _judge_anthropic(blueprint: dict, context: dict) -> JudgeVerdict:
@@ -87,6 +92,31 @@ def _judge_anthropic(blueprint: dict, context: dict) -> JudgeVerdict:
     if verdict is None:
         raise RuntimeError(f"Judge returned unparseable output (stop_reason={response.stop_reason})")
     return verdict
+
+
+def _judge_gemini(blueprint: dict, context: dict) -> JudgeVerdict:
+    """Cross-family judge on Google's Gemini. Reuses the embeddings key; the
+    google-genai SDK takes the Pydantic model directly as the response schema."""
+    from google import genai
+    from google.genai import types
+
+    if not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY not set - add it to .env (get one at "
+                           "https://aistudio.google.com/apikey) or use another judge provider")
+
+    client = genai.Client(api_key=settings.gemini_api_key)
+    resp = client.models.generate_content(
+        model=settings.gemini_judge_model,
+        contents=_user_prompt(blueprint, context),
+        config=types.GenerateContentConfig(
+            system_instruction=JUDGE_SYSTEM,
+            response_mime_type="application/json",
+            response_schema=JudgeVerdict,
+        ),
+    )
+    if isinstance(resp.parsed, JudgeVerdict):
+        return resp.parsed
+    return JudgeVerdict.model_validate_json(resp.text)
 
 
 def _strict_schema(schema: dict) -> dict:

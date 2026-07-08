@@ -70,9 +70,9 @@ def search(query, k):
 @click.argument("rfp_text")
 @click.option("-k", default=6, help="Top-k similar past events to ground on.")
 @click.option("--with-judge", is_flag=True, help="Also grade the blueprint with the LLM judge.")
-@click.option("--judge-provider", type=click.Choice(["anthropic", "grok"]), default=None,
+@click.option("--judge-provider", type=click.Choice(["anthropic", "gemini", "grok"]), default=None,
               help="Judge model family (default: JUDGE_PROVIDER env, then anthropic). "
-                   "grok = cross-family judging, controls for self-preference bias.")
+                   "gemini/grok = cross-family judging, controls for self-preference bias.")
 def ask(rfp_text, k, with_judge, judge_provider):
     """Full GraphRAG: retrieve subgraph, generate a Win Strategy Blueprint (Claude)."""
     from nexusvenue.rag.advisor import advise
@@ -89,32 +89,48 @@ def ask(rfp_text, k, with_judge, judge_provider):
 @click.argument("rfp_text")
 @click.option("-k", default=6)
 def judge_agreement(rfp_text, k):
-    """Generate one blueprint, grade it with BOTH judge families (Claude + Grok),
-    and report cross-family agreement — a cheap judge-calibration signal."""
+    """Generate one blueprint, grade it with every judge family that has a key
+    (Claude + Gemini + Grok), and report cross-family agreement — a cheap
+    judge-calibration signal."""
+    from nexusvenue.config import settings
     from nexusvenue.evals.judge import judge
     from nexusvenue.rag.advisor import advise
+
+    providers = ["anthropic"]
+    if settings.gemini_api_key:
+        providers.append("gemini")
+    else:
+        click.echo("skipping gemini judge (GEMINI_API_KEY not set)")
+    if settings.xai_api_key:
+        providers.append("grok")
+    else:
+        click.echo("skipping grok judge (XAI_API_KEY not set)")
+    if len(providers) == 1:
+        click.echo("note: only the anthropic judge is available - agreement needs >=2 families")
 
     blueprint, context = advise(rfp_text, k=k)
     click.echo(blueprint.model_dump_json(indent=2))
 
     verdicts = {}
-    for provider in ("anthropic", "grok"):
+    for provider in providers:
         click.echo(f"\n--- {provider} verdict ---")
         verdicts[provider] = judge(blueprint.model_dump(), context, provider=provider)
         click.echo(verdicts[provider].model_dump_json(indent=2))
 
-    a, g = verdicts["anthropic"], verdicts["grok"]
     click.echo("\n=== cross-family agreement ===")
-    click.echo(f"{'metric':<22}{'anthropic':>12}{'grok':>12}{'delta':>10}")
-    for label, av, gv in [
-        ("context_precision", a.context_precision, g.context_precision),
-        ("citation_validity", a.citation_validity, g.citation_validity),
-        ("actionability", a.actionability_score, g.actionability_score),
-        ("hallucinations", len(a.hallucinations), len(g.hallucinations)),
+    click.echo(f"{'metric':<20}" + "".join(f"{p:>12}" for p in providers) + f"{'spread':>10}")
+    for label, get in [
+        ("context_precision", lambda v: v.context_precision),
+        ("citation_validity", lambda v: v.citation_validity),
+        ("actionability", lambda v: v.actionability_score),
+        ("hallucinations", lambda v: len(v.hallucinations)),
     ]:
-        click.echo(f"{label:<22}{av:>12}{gv:>12}{round(abs(av - gv), 3):>10}")
-    click.echo(f"{'passed':<22}{str(a.passed):>12}{str(g.passed):>12}"
-               f"{'AGREE' if a.passed == g.passed else 'DISAGREE':>10}")
+        vals = [get(verdicts[p]) for p in providers]
+        click.echo(f"{label:<20}" + "".join(f"{v:>12}" for v in vals)
+                   + f"{round(max(vals) - min(vals), 3):>10}")
+    passes = [verdicts[p].passed for p in providers]
+    click.echo(f"{'passed':<20}" + "".join(f"{str(x):>12}" for x in passes)
+               + f"{'AGREE' if len(set(passes)) == 1 else 'DISAGREE':>10}")
 
 
 @cli.command()

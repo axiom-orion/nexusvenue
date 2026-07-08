@@ -8,6 +8,12 @@ ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 
 
+def _secret(name: str) -> str | None:
+    """Env secret, treating .env.example placeholders ('...', 'sk-ant-...') as unset."""
+    v = os.getenv(name)
+    return None if not v or v.endswith("...") else v
+
+
 @dataclass(frozen=True)
 class Settings:
     neo4j_uri: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
@@ -17,13 +23,15 @@ class Settings:
     anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")
     judge_model: str = os.getenv("JUDGE_MODEL", "claude-opus-4-8")
 
-    # Cross-family judging: "anthropic" (default) or "grok". A judge from a
-    # different model family than the generator controls for self-preference bias.
+    # Cross-family judging: "anthropic" (default), "gemini", or "grok". A judge
+    # from a different model family than the generator (Claude) controls for
+    # self-preference bias; `judge-agreement` runs every family with a key.
     judge_provider: str = os.getenv("JUDGE_PROVIDER", "anthropic")
-    xai_api_key: str | None = os.getenv("XAI_API_KEY")
+    xai_api_key: str | None = _secret("XAI_API_KEY")
     grok_model: str = os.getenv("GROK_MODEL", "grok-4")
+    gemini_judge_model: str = os.getenv("GEMINI_JUDGE_MODEL", "gemini-2.5-pro")
 
-    gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
+    gemini_api_key: str | None = _secret("GEMINI_API_KEY")
     embed_model: str = os.getenv("EMBED_MODEL", "gemini-embedding-001")
     embed_dim: int = int(os.getenv("EMBED_DIM", "1536"))
     # "gemini" for real embeddings, "hash" for deterministic offline vectors
