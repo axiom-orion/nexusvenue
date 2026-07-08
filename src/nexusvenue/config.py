@@ -17,6 +17,12 @@ class Settings:
     anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")
     judge_model: str = os.getenv("JUDGE_MODEL", "claude-opus-4-8")
 
+    # Cross-family judging: "anthropic" (default) or "grok". A judge from a
+    # different model family than the generator controls for self-preference bias.
+    judge_provider: str = os.getenv("JUDGE_PROVIDER", "anthropic")
+    xai_api_key: str | None = os.getenv("XAI_API_KEY")
+    grok_model: str = os.getenv("GROK_MODEL", "grok-4")
+
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
     embed_model: str = os.getenv("EMBED_MODEL", "gemini-embedding-001")
     embed_dim: int = int(os.getenv("EMBED_DIM", "1536"))

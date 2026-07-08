@@ -84,7 +84,8 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
 | `nexusvenue sync` | Incremental sync past the watermark; embeds new nodes only. Run it twice — the second run is a no-op |
 | `nexusvenue embed` | Embed BEO notes + RFP text onto nodes (Gemini or offline hash backend) |
 | `nexusvenue search "<query>"` | Retrieval only — inspect the subgraph context |
-| `nexusvenue ask "<rfp>" [--with-judge]` | Full GraphRAG → Win Strategy Blueprint (→ judge verdict) |
+| `nexusvenue ask "<rfp>" [--with-judge] [--judge-provider grok]` | Full GraphRAG → Win Strategy Blueprint (→ judge verdict) |
+| `nexusvenue judge-agreement "<rfp>"` | Grade one blueprint with BOTH judge families (Claude + Grok) and report cross-family agreement |
 | `nexusvenue showcase` | Run the SQL-vs-Cypher comparison queries live |
 | `nexusvenue eval-retrieval` | Precision/recall@k against the gold set |
 | `nexusvenue demo` | generate → etl → embed → eval in one shot |
@@ -106,6 +107,13 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   graph forks ("Accenture Incorporated" must land on the existing Accenture
   node, not mint a duplicate). `sync()` also re-infers derived edges
   (`REPRESENTS`) and advances the watermark only after a successful upsert.
+- **Why a cross-family judge?** LLM-as-a-judge has a documented failure mode:
+  self-preference bias — a judge grades output from its own model family more
+  favorably. The generator here is Claude, so the judge can run on xAI's Grok
+  (`--judge-provider grok`), and `judge-agreement` runs both families on the
+  same blueprint and diffs the verdicts — a cheap judge-calibration signal
+  (`evals/judge.py`). Grok is called over plain HTTP with strict JSON-schema
+  output; the verdict validates against the same Pydantic model either way.
 - **Why a seeded gold set *and* an LLM judge?** They measure different
   failure modes. Precision/recall@k catches retrieval regressions
   deterministically in CI; the judge catches generation failures
@@ -119,8 +127,20 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   guaranteed-parseable, so downstream automation (CRM writeback, dashboards)
   never string-munges model output.
 
+## API keys
+
+Everything except `ask` / `judge-agreement` / real embeddings runs with **zero
+keys** (`EMBED_BACKEND=hash`). For the full loop, add to `.env`:
+
+| Env var | Powers | Get one at |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Advisor blueprint + default judge | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) |
+| `GEMINI_API_KEY` | Real semantic embeddings (`EMBED_BACKEND=gemini`) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `XAI_API_KEY` | Optional cross-family Grok judge | [console.x.ai](https://console.x.ai) → API Keys |
+
 ## Stack
 
 Python 3.11+ · Neo4j 5 (vector indexes) · Anthropic Claude (`claude-opus-4-8`,
 structured outputs + adaptive thinking) · Gemini embeddings
-(`gemini-embedding-001`, 1536-dim) · RapidFuzz · Pydantic v2 · Click
+(`gemini-embedding-001`, 1536-dim) · xAI Grok (`grok-4`, cross-family judge) ·
+RapidFuzz · Pydantic v2 · Click

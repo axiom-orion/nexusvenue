@@ -48,25 +48,102 @@ class JudgeVerdict(BaseModel):
     passed: bool = Field(description="True only if zero material hallucinations AND context_precision >= 0.9 AND actionability_score >= 3")
 
 
-def judge(blueprint: dict, context: dict) -> JudgeVerdict:
+def _user_prompt(blueprint: dict, context: dict) -> str:
+    return (
+        "## Retrieved knowledge-graph context (ground truth)\n"
+        + json.dumps(context, indent=2, default=str)
+        + "\n\n## Win Strategy Blueprint to grade\n"
+        + json.dumps(blueprint, indent=2, default=str)
+    )
+
+
+def judge(blueprint: dict, context: dict, provider: str | None = None) -> JudgeVerdict:
+    """Grade a blueprint. provider: "anthropic" (default) or "grok".
+
+    Judging with a different model family than the generator (Claude) controls
+    for self-preference bias — a judge tends to grade its own family's output
+    more favorably. Run both via `nexusvenue judge-agreement` for a
+    cross-family agreement signal.
+    """
+    provider = provider or settings.judge_provider
+    if provider == "grok":
+        return _judge_grok(blueprint, context)
+    if provider == "anthropic":
+        return _judge_anthropic(blueprint, context)
+    raise ValueError(f"unknown judge provider {provider!r} (use 'anthropic' or 'grok')")
+
+
+def _judge_anthropic(blueprint: dict, context: dict) -> JudgeVerdict:
     client = anthropic.Anthropic()
     response = client.messages.parse(
         model=settings.judge_model,
         max_tokens=16000,
         thinking={"type": "adaptive"},
         system=JUDGE_SYSTEM,
-        messages=[{
-            "role": "user",
-            "content": (
-                "## Retrieved knowledge-graph context (ground truth)\n"
-                + json.dumps(context, indent=2, default=str)
-                + "\n\n## Win Strategy Blueprint to grade\n"
-                + json.dumps(blueprint, indent=2, default=str)
-            ),
-        }],
+        messages=[{"role": "user", "content": _user_prompt(blueprint, context)}],
         output_format=JudgeVerdict,
     )
     verdict = response.parsed_output
     if verdict is None:
         raise RuntimeError(f"Judge returned unparseable output (stop_reason={response.stop_reason})")
     return verdict
+
+
+def _strict_schema(schema: dict) -> dict:
+    """Adapt a Pydantic JSON schema for xAI strict structured outputs: every
+    object gets additionalProperties=false with all properties required, and
+    numeric range keywords (unsupported in strict mode) are dropped — Pydantic
+    still enforces ge/le client-side when the response is validated."""
+    import copy
+
+    schema = copy.deepcopy(schema)
+
+    def walk(node):
+        if isinstance(node, dict):
+            for kw in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
+                node.pop(kw, None)
+            if "properties" in node:
+                node["additionalProperties"] = False
+                node["required"] = list(node["properties"])
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(schema)
+    return schema
+
+
+def _judge_grok(blueprint: dict, context: dict) -> JudgeVerdict:
+    """Cross-family judge on xAI's Grok, called over plain HTTP (httpx ships
+    with the anthropic SDK — no extra dependency, and no OpenAI shim)."""
+    import httpx
+
+    if not settings.xai_api_key:
+        raise RuntimeError("XAI_API_KEY not set - add it to .env (get one at https://console.x.ai) "
+                           "or use JUDGE_PROVIDER=anthropic")
+
+    resp = httpx.post(
+        "https://api.x.ai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {settings.xai_api_key}"},
+        json={
+            "model": settings.grok_model,
+            "messages": [
+                {"role": "system", "content": JUDGE_SYSTEM},
+                {"role": "user", "content": _user_prompt(blueprint, context)},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "judge_verdict",
+                    "strict": True,
+                    "schema": _strict_schema(JudgeVerdict.model_json_schema()),
+                },
+            },
+        },
+        timeout=180.0,
+    )
+    resp.raise_for_status()
+    content = resp.json()["choices"][0]["message"]["content"]
+    return JudgeVerdict.model_validate_json(content)
