@@ -20,6 +20,12 @@ from nexusvenue.config import settings
 
 SEED = 20260708
 
+# Salesforce-style SystemModstamp analog. Full generate stamps everything at
+# T0; mutate_delta() stamps a "next business day" batch after it, which is
+# what the incremental sync watermark keys on.
+T0 = "2026-07-01T00:00:00"
+DELTA_TS = "2026-07-08T09:00:00"
+
 PROPERTIES = [
     ("ORL", "NexusVenue Grand Orlando", "Orlando, FL", 1200),
     ("MIA", "NexusVenue Miami Beachfront", "Miami, FL", 800),
@@ -139,11 +145,13 @@ CREATE TABLE accounts (
     property_code TEXT NOT NULL,
     account_name TEXT NOT NULL,
     industry     TEXT,
-    created_date TEXT
+    created_date TEXT,
+    last_modified TEXT NOT NULL
 );
 CREATE TABLE agencies (
     agency_id   TEXT PRIMARY KEY,
-    agency_name TEXT NOT NULL
+    agency_name TEXT NOT NULL,
+    last_modified TEXT NOT NULL
 );
 CREATE TABLE contacts (
     contact_id    TEXT PRIMARY KEY,
@@ -153,7 +161,8 @@ CREATE TABLE contacts (
     phone         TEXT,
     title         TEXT,
     account_id    TEXT REFERENCES accounts(account_id),
-    agency_id     TEXT REFERENCES agencies(agency_id)
+    agency_id     TEXT REFERENCES agencies(agency_id),
+    last_modified TEXT NOT NULL
 );
 CREATE TABLE rfps (
     rfp_id        TEXT PRIMARY KEY,
@@ -164,7 +173,8 @@ CREATE TABLE rfps (
     attendee_count INTEGER,
     event_date    TEXT,
     status        TEXT,
-    raw_text      TEXT
+    raw_text      TEXT,
+    last_modified TEXT NOT NULL
 );
 CREATE TABLE beo_history (
     beo_id        TEXT PRIMARY KEY,
@@ -180,7 +190,8 @@ CREATE TABLE beo_history (
     av_spend      REAL,
     total_revenue REAL,
     status        TEXT,
-    ops_notes     TEXT
+    ops_notes     TEXT,
+    last_modified TEXT NOT NULL
 );
 """
 
@@ -202,7 +213,7 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
     con.executescript(SQL_SCHEMA)
 
     for aid, name in [(f"AG{i:03d}", n) for i, n in enumerate(AGENCIES, 1)]:
-        con.execute("INSERT INTO agencies VALUES (?,?)", (aid, name))
+        con.execute("INSERT INTO agencies VALUES (?,?,?)", (aid, name, T0))
 
     # Per-property account rows using the messy name variants.
     account_rows = []  # (account_id, property_code, canonical)
@@ -214,8 +225,9 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
             seq += 1
             aid = f"{code}-ACC{seq:04d}"
             con.execute(
-                "INSERT INTO accounts VALUES (?,?,?,?,?)",
-                (aid, code, variant, industry, f"20{rng.randint(19, 25)}-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}"),
+                "INSERT INTO accounts VALUES (?,?,?,?,?,?)",
+                (aid, code, variant, industry,
+                 f"20{rng.randint(19, 25)}-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}", T0),
             )
             account_rows.append((aid, code, canonical))
 
@@ -240,10 +252,10 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
                 by_canonical.setdefault(canonical, []).append((f, l, email))
             cid = f"{code}-CON{cseq:04d}"
             con.execute(
-                "INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?,?)",
                 (cid, code, name, email, _phone(rng),
                  rng.choice(["Corporate Travel Manager", "Executive Assistant", "Events Director", "Procurement Lead"]),
-                 aid, None),
+                 aid, None, T0),
             )
             contact_rows.append((cid, code, aid, None))
 
@@ -256,10 +268,10 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
             code = rng.choice(PROPERTIES)[0]
             cid = f"{code}-CON{cseq:04d}"
             con.execute(
-                "INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?)",
+                "INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?,?)",
                 (cid, code, f"{f} {l}",
                  f"{f.lower()}@{agency_name.split()[0].lower()}events.com",
-                 _phone(rng), "Independent Event Planner", None, agid),
+                 _phone(rng), "Independent Event Planner", None, agid, T0),
             )
             agency_planner_ids.append((cid, code, agid))
 
@@ -285,12 +297,12 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
                 goldset[frag["key"]]["relevant_beo_ids"].append(beo_id)
             planner = rng.choice([c for c in contact_rows if c[2] == aid] + agency_planner_ids)
             con.execute(
-                "INSERT INTO beo_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO beo_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (beo_id, code, aid, planner[0], None,
                  rng.choice(EVENT_TYPES),
                  f"202{rng.randint(3, 5)}-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}",
                  attendees, int(attendees * rng.uniform(0.4, 0.9)),
-                 fb, av, total, "Executed", " ".join(notes)),
+                 fb, av, total, "Executed", " ".join(notes), T0),
             )
             beo_rows.append(beo_id)
 
@@ -303,12 +315,13 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
         etype = rng.choice(EVENT_TYPES)
         planner = rng.choice([c for c in contact_rows if c[2] == aid] + agency_planner_ids)
         con.execute(
-            "INSERT INTO rfps VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO rfps VALUES (?,?,?,?,?,?,?,?,?,?)",
             (rfp_id, code, aid, planner[0], etype, attendees,
              f"2026-{rng.randint(8,12):02d}-{rng.randint(1,28):02d}",
              rng.choice(["Open", "Open", "Proposal Sent", "Negotiating"]),
              f"{etype} for approximately {attendees} attendees. "
-             f"Requesting proposal including guest rooms, general session space, and F&B program."),
+             f"Requesting proposal including guest rooms, general session space, and F&B program.",
+             T0),
         )
 
     con.commit()
@@ -320,6 +333,96 @@ def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> di
 
     goldset_path.write_text(json.dumps(goldset, indent=2))
     return counts
+
+
+def mutate_delta(db_path: Path | None = None) -> dict:
+    """Apply one simulated business day of CRM changes (all stamped DELTA_TS).
+
+    Each change exercises a different incremental-sync code path:
+      1. New source row for an EXISTING corporation under yet another legal-name
+         variant -> incremental account ER must merge it into the canonical node.
+      2. Brand-new account (Stripe) -> new canonical node.
+      3. New contact sharing an existing contact's email -> planner ER merge.
+      4. New BEO for an existing account booked via an agency planner ->
+         relationship upsert + REPRESENTS re-inference.
+      5. New BEO + RFP for the new account -> full new-entity path.
+      6. Status update on an existing RFP -> property update on an existing node.
+    """
+    db_path = db_path or settings.crm_db
+    if not db_path.exists():
+        raise FileNotFoundError(f"{db_path} not found - run `nexusvenue generate` first")
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+
+    if con.execute("SELECT 1 FROM accounts WHERE account_id = 'CHI-ACC9001'").fetchone():
+        con.close()
+        return {"status": "delta already applied"}
+
+    # 1. Existing corporation, new property, new name variant.
+    con.execute("INSERT INTO accounts VALUES (?,?,?,?,?,?)",
+                ("CHI-ACC9001", "CHI", "Accenture Incorporated", "Professional Services",
+                 "2026-07-08", DELTA_TS))
+    # 2. Brand-new account.
+    con.execute("INSERT INTO accounts VALUES (?,?,?,?,?,?)",
+                ("MIA-ACC9002", "MIA", "Stripe, Inc.", "Technology", "2026-07-08", DELTA_TS))
+
+    # 3. Duplicate person: same email as an existing corporate contact, name drift.
+    dup = con.execute(
+        "SELECT * FROM contacts WHERE agency_id IS NULL AND email IS NOT NULL "
+        "ORDER BY contact_id LIMIT 1").fetchone()
+    first = dup["full_name"].split()[0].rstrip(".")
+    drifted = f"{first[0]}. {dup['full_name'].split()[-1].rstrip('.')}"
+    con.execute("INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?,?)",
+                ("CHI-CON9001", "CHI", drifted, dup["email"], dup["phone"],
+                 dup["title"], "CHI-ACC9001", None, DELTA_TS))
+    # New contact at the new account.
+    con.execute("INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?,?)",
+                ("MIA-CON9002", "MIA", "Dana Whitfield", "dana.whitfield@stripe.com",
+                 "(415) 555-0184", "Events Director", "MIA-ACC9002", None, DELTA_TS))
+
+    # 4. New BEO for an existing account, booked through an agency planner.
+    existing_acct = con.execute(
+        "SELECT account_id FROM accounts WHERE account_name LIKE 'Deloitte%' "
+        "ORDER BY account_id LIMIT 1").fetchone()
+    agency_planner = con.execute(
+        "SELECT contact_id FROM contacts WHERE agency_id IS NOT NULL "
+        "ORDER BY contact_id LIMIT 1").fetchone()
+    con.execute("INSERT INTO beo_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                ("ORL-BEO90001", "ORL", existing_acct["account_id"],
+                 agency_planner["contact_id"], None, "Annual Gala", "2026-07-02",
+                 400, 300, 92_400.0, 61_000.0, 213_800.0, "Executed",
+                 "Rooftop drone light show finale synchronized to a live orchestra; "
+                 "FAA waiver and spotter crew coordinated by hotel. "
+                 "Client requested plated dinner service with wine pairings.",
+                 DELTA_TS))
+    # 5. New BEO + open RFP for the new account.
+    con.execute("INSERT INTO beo_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                ("MIA-BEO90002", "MIA", "MIA-ACC9002", "MIA-CON9002", None,
+                 "Users Conference", "2026-07-05", 250, 180, 58_750.0, 44_000.0,
+                 148_500.0, "Executed",
+                 "Developer conference with hack-lounge buildout; espresso cart "
+                 "sponsorship and 24-hour grab-and-go. Standard AV package: two "
+                 "projectors, confidence monitors, wireless lavs.",
+                 DELTA_TS))
+    con.execute("INSERT INTO rfps VALUES (?,?,?,?,?,?,?,?,?,?)",
+                ("MIA-RFP9001", "MIA", "MIA-ACC9002", "MIA-CON9002",
+                 "Leadership Summit", 150, "2026-11-12", "Open",
+                 "Leadership Summit for approximately 150 attendees. Requesting "
+                 "proposal including guest rooms, general session space, and F&B program.",
+                 DELTA_TS))
+
+    # 6. Update an existing RFP's status.
+    moved = con.execute(
+        "SELECT rfp_id FROM rfps WHERE status = 'Open' ORDER BY rfp_id LIMIT 1").fetchone()
+    con.execute("UPDATE rfps SET status = 'Proposal Sent', last_modified = ? WHERE rfp_id = ?",
+                (DELTA_TS, moved["rfp_id"]))
+
+    con.commit()
+    con.close()
+    return {
+        "accounts": 2, "contacts": 2, "beo_history": 2, "rfps_new": 1,
+        "rfps_updated": 1, "stamped": DELTA_TS,
+    }
 
 
 if __name__ == "__main__":

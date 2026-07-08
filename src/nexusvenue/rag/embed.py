@@ -74,17 +74,22 @@ def get_embedder():
     return GeminiEmbedder(settings.embed_dim)
 
 
-def embed_graph(driver: Driver | None = None, batch_size: int = 50) -> dict:
-    """Embed BEO ops_notes and RFP raw_text onto their nodes."""
+def embed_graph(driver: Driver | None = None, batch_size: int = 50,
+                missing_only: bool = False) -> dict:
+    """Embed BEO ops_notes and RFP raw_text onto their nodes.
+
+    missing_only=True embeds just nodes without an embedding — the cheap path
+    after an incremental sync, instead of re-embedding the whole graph."""
     own = driver is None
     driver = driver or get_driver()
     embedder = get_embedder()
     counts = {}
 
+    missing_filter = "AND n.embedding IS NULL " if missing_only else ""
     for label, text_prop in [("BEO", "ops_notes"), ("RFP", "raw_text")]:
         with driver.session() as s:
             rows = s.run(
-                f"MATCH (n:{label}) WHERE n.{text_prop} IS NOT NULL "
+                f"MATCH (n:{label}) WHERE n.{text_prop} IS NOT NULL {missing_filter}"
                 "RETURN n.id AS id, n." + text_prop + " AS text"
             ).data()
         done = 0

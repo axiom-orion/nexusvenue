@@ -30,6 +30,25 @@ def etl():
 
 
 @cli.command()
+def delta():
+    """Simulate a business day of CRM changes (new/updated rows, later timestamps)."""
+    from nexusvenue.mockdata.generate import mutate_delta
+    click.echo(mutate_delta())
+
+
+@cli.command()
+def sync():
+    """Incremental sync: load only rows past the watermark, resolve new entities
+    against the live graph, embed only new nodes. Idempotent."""
+    from nexusvenue.etl.load import sync as run_sync
+    from nexusvenue.rag.embed import embed_graph
+    report = run_sync()
+    click.echo(report)
+    if "up to date" not in report and "no watermark" not in report:
+        click.echo(f"embedded (new nodes only): {embed_graph(missing_only=True)}")
+
+
+@cli.command()
 def embed():
     """Embed BEO ops-notes and RFP text onto graph nodes (Gemini or hash backend)."""
     from nexusvenue.config import settings

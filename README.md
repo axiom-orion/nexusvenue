@@ -11,6 +11,14 @@ cities under three different legal names. Property-siloed CRMs store those
 facts as disconnected rows. This project rebuilds them as a graph and puts a
 grounded, evaluated LLM advisor on top.
 
+The domain model is deliberately Salesforce-shaped: hotel group sales runs on
+Amadeus Delphi, which is built natively on the Salesforce platform — Accounts,
+Contacts, and custom Booking/BEO objects, each carrying a `SystemModstamp`.
+The mock CRM mirrors that structure (including a `last_modified` stamp on
+every row), so the ETL patterns here — batched `MERGE` upserts, watermark-based
+incremental sync, cross-org entity resolution — are the ones a real
+Salesforce-to-graph pipeline needs.
+
 ```
 [Messy multi-property CRM (SQLite)]
         │  extract
@@ -38,6 +46,7 @@ grounded, evaluated LLM advisor on top.
 | Mock CRM generator | `mockdata/generate.py` | Realistic dirty data: per-property name variants, contact spelling drift, unstructured BEO ops-notes |
 | ETL + entity resolution | `etl/` | RapidFuzz + union-find clustering with provenance; email-keyed contact dedupe |
 | Graph modeling | `etl/load.py`, `graph/schema.py` | Relational → graph schema pivot, constraints, batched `UNWIND`/`MERGE` loads, vector indexes |
+| Incremental sync | `etl/load.py` (`sync`) | Watermark on a `SyncState` node, delta extraction on `last_modified`, incremental ER against the live graph, new-nodes-only embedding — idempotent |
 | SQL → Cypher | `graph/queries.py`, [docs/sql-vs-cypher.md](docs/sql-vs-cypher.md) | Side-by-side legacy SQL and optimized Cypher, runnable against live data |
 | GraphRAG retrieval | `rag/retrieve.py` | Vector search anchors + traversal expansion (account portfolios, agency warm paths) |
 | Advisor | `rag/advisor.py` | Claude structured outputs (`messages.parse` + Pydantic) — guaranteed-valid, citation-carrying JSON |
@@ -71,6 +80,8 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
 |---|---|
 | `nexusvenue generate` | Write the messy CRM (SQLite) + retrieval gold set |
 | `nexusvenue etl` | Extract → entity-resolve → load Neo4j (prints merge report) |
+| `nexusvenue delta` | Simulate a business day of CRM changes (new/updated rows) |
+| `nexusvenue sync` | Incremental sync past the watermark; embeds new nodes only. Run it twice — the second run is a no-op |
 | `nexusvenue embed` | Embed BEO notes + RFP text onto nodes (Gemini or offline hash backend) |
 | `nexusvenue search "<query>"` | Retrieval only — inspect the subgraph context |
 | `nexusvenue ask "<rfp>" [--with-judge]` | Full GraphRAG → Win Strategy Blueprint (→ judge verdict) |
@@ -88,6 +99,13 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   the whole value proposition; without ER, "Deloitte" is three small
   accounts instead of one whale. Resolution keeps full provenance
   (`aliases`, `source_ids`) on the canonical node.
+- **Why is incremental sync harder than the full load?** Entity resolution.
+  A full rebuild clusters all rows at once; a delta row must be resolved
+  against *canonical nodes already in the graph* using the same
+  normalize/fuzzy criteria, or the two paths disagree on identity and the
+  graph forks ("Accenture Incorporated" must land on the existing Accenture
+  node, not mint a duplicate). `sync()` also re-infers derived edges
+  (`REPRESENTS`) and advances the watermark only after a successful upsert.
 - **Why a seeded gold set *and* an LLM judge?** They measure different
   failure modes. Precision/recall@k catches retrieval regressions
   deterministically in CI; the judge catches generation failures

@@ -102,6 +102,19 @@ def resolve_contacts(rows: list[dict]) -> list[dict]:
     return canonical
 
 
+def match_account(name: str, existing: list[dict]) -> str | None:
+    """Incremental ER: match one raw account name against canonical accounts
+    already in the graph. `existing` rows need {id, aliases}. Same normalize +
+    fuzzy criteria as the batch path, so full-load and sync agree on identity."""
+    norm = normalize_account_name(name)
+    for e in existing:
+        for alias in e["aliases"]:
+            alias_norm = normalize_account_name(alias)
+            if norm == alias_norm or fuzz.token_sort_ratio(norm, alias_norm) >= FUZZ_THRESHOLD:
+                return e["id"]
+    return None
+
+
 def resolution_report(raw_accounts: list[dict], canonical_accounts: list[dict],
                       raw_contacts: list[dict], canonical_contacts: list[dict]) -> str:
     merged = [c for c in canonical_accounts if len(c["source_ids"]) > 1]
