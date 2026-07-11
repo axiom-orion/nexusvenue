@@ -123,7 +123,14 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
 - **Why an offline `hash` embedding backend?** The whole pipeline — vector
   indexes, retrieval, eval plumbing — runs in CI with zero API keys.
   Token-overlap similarity is enough to smoke-test wiring; `gemini` gives
-  real semantics.
+  real semantics. Measured on the same seeded gold set: hash backend
+  **P@6 0.72 / R@6 0.77** → Gemini embeddings **P@6 0.83 / R@6 0.88**.
+- **What does the judge panel actually catch?** In a live run, the advisor
+  wrote "five" mocktail events where the context documents four. All three
+  judge families caught it; Gemini and Grok scored it immaterial (passed),
+  the Claude judge scored it material (failed) — a real example of why
+  single-judge pass/fail is fragile at the rubric boundary and cross-family
+  agreement is worth measuring.
 - **Why structured outputs instead of "please return JSON"?** `messages.parse`
   with Pydantic schemas makes the blueprint and the judge verdict
   guaranteed-parseable, so downstream automation (CRM writeback, dashboards)
