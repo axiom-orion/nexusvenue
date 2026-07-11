@@ -1,7 +1,7 @@
 """Entity resolution across property-level CRM silos.
 
 Accounts: the same corporation appears under different legal-name variants at
-each property ("Deloitte" / "Deloitte LLP" / "DELOITTE & TOUCHE LLP"). We
+each property ("Calder & Voss" / "Calder & Voss LLP" / "CALDER & VOSS ADVISORY LLP"). We
 normalize legal suffixes and punctuation, then fuzzy-cluster with RapidFuzz
 using union-find, producing one canonical account node per real-world entity
 with full provenance back to the source rows.

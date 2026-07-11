@@ -57,9 +57,10 @@ not two more JOINs and a subquery.
 
 ## What the graph does that SQL structurally can't (without ER)
 
-The mock CRM in this repo simulates three property-level Salesforce orgs.
-"Deloitte", "Deloitte LLP" and "DELOITTE & TOUCHE LLP" are three unrelated
-rows in three silos. `GROUP BY account_name` splits the customer into three
+The mock CRM in this repo simulates three property-level Salesforce orgs
+(all company data is fictional).
+"Calder & Voss", "Calder & Voss LLP" and "CALDER & VOSS ADVISORY LLP" are
+three unrelated rows in three silos. `GROUP BY account_name` splits the customer into three
 smaller, less important-looking customers.
 
 The ETL pipeline (`src/nexusvenue/etl/resolve.py`) fuzzy-clusters those rows

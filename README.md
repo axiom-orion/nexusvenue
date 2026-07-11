@@ -23,7 +23,7 @@ Salesforce-to-graph pipeline needs.
 [Messy multi-property CRM (SQLite)]
         │  extract
         ▼
-[Python ETL + fuzzy entity resolution]      "Deloitte" = "Deloitte LLP" = "DELOITTE & TOUCHE LLP"
+[Python ETL + fuzzy entity resolution]      "Calder & Voss" = "Calder & Voss LLP" = "CALDER & VOSS ADVISORY LLP"
         │  load (Cypher MERGE, batched UNWIND)
         ▼
 [Neo4j knowledge graph]                     Accounts / Planners / Agencies / RFPs / BEOs / Properties
@@ -97,14 +97,14 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   booked a $200k gala at a sister property is invisible to cosine similarity
   over one document. The retriever returns both (`rag/retrieve.py`).
 - **Why entity resolution before graph load?** Cross-property intelligence is
-  the whole value proposition; without ER, "Deloitte" is three small
+  the whole value proposition; without ER, "Calder & Voss" is three small
   accounts instead of one whale. Resolution keeps full provenance
   (`aliases`, `source_ids`) on the canonical node.
 - **Why is incremental sync harder than the full load?** Entity resolution.
   A full rebuild clusters all rows at once; a delta row must be resolved
   against *canonical nodes already in the graph* using the same
   normalize/fuzzy criteria, or the two paths disagree on identity and the
-  graph forks ("Accenture Incorporated" must land on the existing Accenture
+  graph forks ("Ashcombe Incorporated" must land on the existing Ashcombe
   node, not mint a duplicate). `sync()` also re-infers derived edges
   (`REPRESENTS`) and advances the watermark only after a successful upsert.
 - **Why cross-family judges?** LLM-as-a-judge has a documented failure mode:

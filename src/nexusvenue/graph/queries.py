@@ -44,8 +44,8 @@ ORDER BY fb_spend DESC LIMIT 10
             "(invisible in siloed CRMs where each property has its own name variant)"
         ),
         "sql": """
--- Effectively impossible without entity resolution: 'Deloitte' (ORL),
--- 'Deloitte LLP' (MIA) and 'DELOITTE & TOUCHE LLP' (CHI) are three
+-- Effectively impossible without entity resolution: 'Calder & Voss' (ORL),
+-- 'Calder & Voss LLP' (MIA) and 'CALDER & VOSS ADVISORY LLP' (CHI) are three
 -- unrelated account rows. GROUP BY account_name silently splits them.
         """.strip(),
         "cypher": """

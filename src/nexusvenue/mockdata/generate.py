@@ -1,10 +1,12 @@
 """Generate a realistically messy multi-property hospitality CRM in SQLite.
 
-Simulates three property-level Salesforce orgs (Orlando, Miami, Chicago) that
+Simulates three property-level CRM orgs (Orlando, Miami, Chicago) that
 were never integrated: the same corporate account appears under different
 legal-name variants per property, contacts are duplicated with inconsistent
 spellings, and unstructured BEO operational notes carry the institutional
 knowledge that never made it into structured fields.
+
+All companies are fictional; any resemblance to real firms is coincidental.
 
 Also emits data/goldset.json — for a set of natural-language test queries, the
 BEO ids whose ops_notes were deliberately seeded with matching content. This
@@ -35,26 +37,26 @@ PROPERTIES = [
 # Canonical corporate accounts with per-property name variants (the entity
 # resolution challenge). (canonical, industry, [variants])
 ACCOUNTS = [
-    ("Deloitte", "Professional Services", ["Deloitte", "Deloitte LLP", "DELOITTE & TOUCHE LLP"]),
-    ("Salesforce", "Technology", ["Salesforce", "Salesforce.com, Inc.", "SFDC"]),
-    ("Pfizer", "Pharmaceutical", ["Pfizer", "Pfizer Inc.", "Pfizer Incorporated"]),
-    ("JPMorgan Chase", "Financial Services", ["JPMorgan Chase", "J.P. Morgan", "JPMorgan Chase & Co"]),
-    ("Lockheed Martin", "Aerospace & Defense", ["Lockheed Martin", "Lockheed Martin Corp.", "LOCKHEED-MARTIN"]),
-    ("Procter & Gamble", "Consumer Goods", ["Procter & Gamble", "P&G", "Procter and Gamble Co"]),
-    ("Accenture", "Professional Services", ["Accenture", "Accenture PLC", "Accenture Federal Services"]),
-    ("Cisco", "Technology", ["Cisco", "Cisco Systems", "Cisco Systems, Inc."]),
-    ("AbbVie", "Pharmaceutical", ["AbbVie", "AbbVie Inc.", "Abbvie"]),
-    ("State Farm", "Insurance", ["State Farm", "State Farm Insurance", "State Farm Mutual"]),
-    ("Hyatt Corporate", "Hospitality", ["Hyatt Corporate", "Hyatt Hotels Corp", "HYATT"]),
-    ("Emerson Electric", "Industrial", ["Emerson Electric", "Emerson", "Emerson Electric Co."]),
-    ("Raymond James", "Financial Services", ["Raymond James", "Raymond James Financial", "RJ Financial"]),
-    ("Darden Restaurants", "Hospitality", ["Darden Restaurants", "Darden", "Darden Restaurants Inc"]),
-    ("Baptist Health", "Healthcare", ["Baptist Health", "Baptist Health South Florida", "Baptist Health SF"]),
-    ("Northwestern Medicine", "Healthcare", ["Northwestern Medicine", "Northwestern Memorial", "NW Medicine"]),
-    ("Publix", "Retail", ["Publix", "Publix Super Markets", "Publix Supermarkets Inc"]),
-    ("Motorola Solutions", "Technology", ["Motorola Solutions", "Motorola", "Motorola Solutions Inc."]),
-    ("United Airlines", "Travel", ["United Airlines", "United Airlines Holdings", "UAL"]),
-    ("Marsh McLennan", "Insurance", ["Marsh McLennan", "Marsh & McLennan", "Marsh & McLennan Companies"]),
+    ("Calder & Voss", "Professional Services", ["Calder & Voss", "Calder & Voss LLP", "CALDER & VOSS ADVISORY LLP"]),
+    ("Luminark", "Technology", ["Luminark", "Luminark Cloud, Inc.", "LMK"]),
+    ("Bellwick", "Pharmaceutical", ["Bellwick", "Bellwick Inc.", "Bellwick Incorporated"]),
+    ("Harrowgate Capital", "Financial Services", ["Harrowgate Capital", "H. Gate Capital", "Harrowgate Capital & Co"]),
+    ("Kestrel Dynamics", "Aerospace & Defense", ["Kestrel Dynamics", "Kestrel Dynamics Corp.", "KESTREL-DYNAMICS"]),
+    ("Hartley & Vale", "Consumer Goods", ["Hartley & Vale", "H&V", "Hartley and Vale Co"]),
+    ("Ashcombe", "Professional Services", ["Ashcombe", "Ashcombe PLC", "Ashcombe Federal Services"]),
+    ("Octavian", "Technology", ["Octavian", "Octavian Networks", "Octavian Networks, Inc."]),
+    ("NovaCrest", "Pharmaceutical", ["NovaCrest", "NovaCrest Inc.", "Novacrest"]),
+    ("Shieldstone Mutual", "Insurance", ["Shieldstone Mutual", "Shieldstone Insurance", "Shieldstone Mutual Group"]),
+    ("Auberly Corporate", "Hospitality", ["Auberly Corporate", "Auberly Hotels Corp", "AUBERLY"]),
+    ("Ironvale Electric", "Industrial", ["Ironvale Electric", "Ironvale", "Ironvale Electric Co."]),
+    ("Pemberton Ames", "Financial Services", ["Pemberton Ames", "Pemberton Ames Financial", "PA Financial"]),
+    ("Harborline Restaurants", "Hospitality", ["Harborline Restaurants", "Harborline", "Harborline Restaurants Inc"]),
+    ("Crescent Bay Health", "Healthcare", ["Crescent Bay Health", "Crescent Bay Health South Florida", "Crescent Bay SF"]),
+    ("Lakeshore Medicine", "Healthcare", ["Lakeshore Medicine", "Lakeshore Memorial", "LS Medicine"]),
+    ("Wexford Markets", "Retail", ["Wexford Markets", "Wexford Super Markets", "Wexford Supermarkets Inc"]),
+    ("Quantell Solutions", "Technology", ["Quantell Solutions", "Quantell", "Quantell Solutions Inc."]),
+    ("Aerlight Airways", "Travel", ["Aerlight Airways", "Aerlight Airways Holdings", "ALW"]),
+    ("Whitmore Rand", "Insurance", ["Whitmore Rand", "Whitmore & Rand", "Whitmore & Rand Companies"]),
 ]
 
 AGENCIES = [
@@ -341,7 +343,7 @@ def mutate_delta(db_path: Path | None = None) -> dict:
     Each change exercises a different incremental-sync code path:
       1. New source row for an EXISTING corporation under yet another legal-name
          variant -> incremental account ER must merge it into the canonical node.
-      2. Brand-new account (Stripe) -> new canonical node.
+      2. Brand-new account (Brightledger) -> new canonical node.
       3. New contact sharing an existing contact's email -> planner ER merge.
       4. New BEO for an existing account booked via an agency planner ->
          relationship upsert + REPRESENTS re-inference.
@@ -360,11 +362,11 @@ def mutate_delta(db_path: Path | None = None) -> dict:
 
     # 1. Existing corporation, new property, new name variant.
     con.execute("INSERT INTO accounts VALUES (?,?,?,?,?,?)",
-                ("CHI-ACC9001", "CHI", "Accenture Incorporated", "Professional Services",
+                ("CHI-ACC9001", "CHI", "Ashcombe Incorporated", "Professional Services",
                  "2026-07-08", DELTA_TS))
     # 2. Brand-new account.
     con.execute("INSERT INTO accounts VALUES (?,?,?,?,?,?)",
-                ("MIA-ACC9002", "MIA", "Stripe, Inc.", "Technology", "2026-07-08", DELTA_TS))
+                ("MIA-ACC9002", "MIA", "Brightledger, Inc.", "Technology", "2026-07-08", DELTA_TS))
 
     # 3. Duplicate person: same email as an existing corporate contact, name drift.
     dup = con.execute(
@@ -377,12 +379,12 @@ def mutate_delta(db_path: Path | None = None) -> dict:
                  dup["title"], "CHI-ACC9001", None, DELTA_TS))
     # New contact at the new account.
     con.execute("INSERT INTO contacts VALUES (?,?,?,?,?,?,?,?,?)",
-                ("MIA-CON9002", "MIA", "Dana Whitfield", "dana.whitfield@stripe.com",
+                ("MIA-CON9002", "MIA", "Dana Whitfield", "dana.whitfield@brightledger.com",
                  "(415) 555-0184", "Events Director", "MIA-ACC9002", None, DELTA_TS))
 
     # 4. New BEO for an existing account, booked through an agency planner.
     existing_acct = con.execute(
-        "SELECT account_id FROM accounts WHERE account_name LIKE 'Deloitte%' "
+        "SELECT account_id FROM accounts WHERE account_name LIKE 'Calder%' "
         "ORDER BY account_id LIMIT 1").fetchone()
     agency_planner = con.execute(
         "SELECT contact_id FROM contacts WHERE agency_id IS NOT NULL "
