@@ -124,7 +124,7 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   indexes, retrieval, eval plumbing — runs in CI with zero API keys.
   Token-overlap similarity is enough to smoke-test wiring; `gemini` gives
   real semantics. Measured on the same seeded gold set: hash backend
-  **P@6 0.72 / R@6 0.77** → Gemini embeddings **P@6 0.83 / R@6 0.88**.
+  **P@6 0.70 / R@6 0.74** → Gemini embeddings **P@6 0.78 / R@6 0.82**.
 - **What does the judge panel actually catch?** In a live run, the advisor
   wrote "five" mocktail events where the context documents four. All three
   judge families caught it; Gemini and Grok scored it immaterial (passed),
