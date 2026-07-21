@@ -1,0 +1,68 @@
+property,room_name,sqft,ceiling_ft,cap_theater,cap_banquet,cap_reception,sections,notes
+# Tier-2 = per-room capacity chart (the SOLVER layer: buffet-line ratio, bar ratio, presence-ratio all consume room dims + capacities).
+# Sample compiled from Tier-1 harvest (largest/named ballrooms). FULL charts (every breakout, ceiling, all setups) live in brand-site PDFs — this is the seed to expand.
+# ---- ORLANDO ----
+Hyatt Regency Orlando,Regency Ballroom,54638,,,,4000,,largest; 4000 capacity cited
+Hyatt Regency Orlando,Windermere/divisible,26921,,,,,8,divides into 8
+Hyatt Regency Orlando,Florida Ballroom,8975,,,,,,50-300 pax range
+Hyatt Regency Orlando,Orlando Ballroom,8975,,,,,,50-300 pax range
+Hilton Orlando,Florida Ballroom I,49128,,,,,,largest
+Hilton Orlando,Orlando Ballroom,38625,,,,,,2nd largest
+Orlando World Center Marriott,Cypress Ballroom,105000,,,,,,largest pillar-free resort ballroom in US
+Orlando World Center Marriott,Palms Ballroom,50000,,,,,,
+Orlando World Center Marriott,Crystal Ballroom,40000,,,,,,
+Orlando World Center Marriott,Grand Ballroom,37000,,,,,,redesigned
+Rosen Shingle Creek,Gatlin Ballroom,95000,,,,,,column-free
+Rosen Shingle Creek,Sebastian Ballroom,60000,,,,,,
+Rosen Shingle Creek,Panzacola Ballroom,40000,,,,,,
+Gaylord Palms,Osceola Ballroom,48505,,,,3000,,42x96 stage
+Caribe Royale Orlando,Palms Ballroom,50000,,,4000,5250,,5000 theater
+Disney's Coronado Springs,Veracruz Exhibit Hall,85765,23,5280,4780,3700,,362x238; 3 sections A-C; drive-in access 14x14 + 20x20 doors; own loading docks
+Disney's Coronado Springs,Coronado Ballroom,60214,23,6684,2598,4800,,374x161; sections A-T; backs onto WEST service hall; even drop
+Disney's Coronado Springs,Fiesta Ballroom,21160,23,2650,,1700,10,184x115; sections 1-10; Fiesta 5/6 w/service hall
+Disney's Coronado Springs,Monterrey 1-3,3200,16,336,,210,3,EAST-side junior (long-drop tail); 80x40
+Disney's Coronado Springs,Durango 1-2,3030,16,260,,160,2,EAST-side junior; 54x57
+Disney's Coronado Springs,Yucatan 1-3,2850,16,260,,200,3,EAST-side junior; 75x38
+Disney's Coronado Springs (Gran Destino),Lantana 1-3,2859,10,200,,280,3,GRAN DESTINO tower (2019 expansion); OWN Lantana Show Kitchen (self-contained); 74x35
+Disney's Coronado Springs (Gran Destino),Catalonia Boardroom,1138,10,,,,,Gran Destino tower boardroom; 20x52
+Disney's Contemporary Resort,Fantasia Ballroom,42336,,,,4720,15,3x10488 + 12x816 breakouts
+Disney's Yacht & Beach Club,Grand Harbor Ballroom,36120,,,,,,
+Disney's Yacht & Beach Club,Newport Ballroom,16000,25,,,,8,divisible into 8
+Disney's Grand Floridian,Grand Floridian Ballroom,18216,,,2000,,9,6 salon rooms 40-300 pax
+Disney's BoardWalk Inn,Promenade Ballroom,10132,,1040,660,,8,6 salons / up to 8 breakouts
+Loews Portofino Bay,Tuscan Ballroom,15040,27,,,,,Tiffany-style chandeliers
+Loews Portofino Bay,Venetian Ballroom,7670,,,,,5,
+Signia by Hilton Orlando Bonnet Creek,Bonnet Creek Ballroom,35925,,,,,12,
+Signia by Hilton Orlando Bonnet Creek,Waterside Ballroom,35098,,,,,12,
+Signia by Hilton Orlando Bonnet Creek,Floridian Ballroom,27300,,,,,12,
+Waldorf Astoria Orlando,Central Park Ballroom,8436,,,,,,largest at property
+Waldorf Astoria Orlando,Grand Ballroom,7945,,,,,,
+Four Seasons Resort Orlando,Grand Ballroom,14000,,,,900,,+ East/West terraces 4950 each
+Four Seasons Resort Orlando,Junior Ballroom,6200,,,400,,,
+Hard Rock Hotel Orlando,Avalon Ballroom,2964,,300,,,,
+Omni Orlando ChampionsGate,Osceola Ballroom,28872,,,,,,3 ballrooms 20k-28.8k
+Walt Disney World Swan and Dolphin,Hemispheres Ballroom,55000,,,,,,+ new 38k & 41k ballrooms post-expansion
+Rosen Centre Hotel,Grand Ballroom,35000,,,,,,
+Rosen Centre Hotel,Executive Ballroom,18000,,,,,,
+Rosen Plaza Hotel,Grand Ballroom,26000,,,,,,+ 12500 foyer
+Renaissance Orlando at SeaWorld,Oceans Ballroom,36288,,,,,,
+Renaissance Orlando at SeaWorld,Crystal Ballroom,17325,,,,,,
+Renaissance Orlando at SeaWorld,Peninsula Ballroom,16347,22,,,,7,
+Hilton Orlando Buena Vista Palace,Sabal Ballroom,18000,,,,2000,,
+Hilton Orlando Buena Vista Palace,Citron Ballroom,16530,,,,1800,,
+Hyatt Regency Grand Cypress,Windsong Ballroom,25000,,2750,,,20,
+Conrad Orlando,Grand Ballroom,15000,23,,,,5,
+Conrad Orlando,Jacaranda Ballroom,6500,20,,,,4,
+JW Marriott Orlando Bonnet Creek,Grand Ballroom,22000,,,1280,2340,,
+JW Marriott Orlando Grande Lakes,Grand Ballroom,28000,,,,,,
+# ---- DALLAS ----
+Gaylord Texan,Texas Ballroom,49025,,,,,,+ Longhorn Exhibit Hall 179520
+Sheraton Dallas Hotel,Lone Star Ballroom,40801,,4500,,5000,,biggest ballroom in Texas; pillarless
+Omni Dallas Hotel,Dallas Ballroom,31704,,,,,,
+Hyatt Regency Dallas,Landmark Ballroom,30000,,,2000,,4,
+# ---- NASHVILLE ----
+Gaylord Opryland,Delta/largest Ballroom,55314,,,,10000,,6 ballrooms 3364-55314
+Omni Nashville Hotel,Grand Ballroom,25000,,,,,,+ 15000 2nd ballroom + 10000 Hall of Fame
+Grand Hyatt Nashville,Grand Ballroom,20000,,,,,,2nd-largest downtown Nashville ballroom
+Renaissance Nashville Hotel,Grand Ballroom,17877,,,,,,+ 12019 2nd
+JW Marriott Nashville,Symphony Ballroom,10064,,,1030,1110,,+ only private outdoor lawn downtown

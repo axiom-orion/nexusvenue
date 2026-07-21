@@ -30,6 +30,24 @@ def etl():
 
 
 @cli.command()
+@click.option("--dry-run", is_flag=True, help="Parse the venue CSVs and report the graph without touching Neo4j.")
+def venues(dry_run):
+    """Load the BAI venue/market graph: enriched properties, the OVERFLOW network,
+    Tier-2 rooms, and the market housing tiers a citywide fills."""
+    if dry_run:
+        from nexusvenue.etl.venue_intel import parse_venue_intel, _summary
+        d = parse_venue_intel()
+        click.echo(_summary(d))
+        click.echo("\nsample properties: " + ", ".join(
+            f"{p['code']}({p['archetype']},{p['event_sqft']}sqft)" for p in d["properties"][:5]))
+        click.echo("sample overflow: " + ", ".join(
+            f"{e['a']}-[{e['type']}]->{e['b']}" for e in d["edges"][:5]))
+        return
+    from nexusvenue.etl.venue_intel import load_venue_intel
+    click.echo(load_venue_intel())
+
+
+@cli.command()
 def delta():
     """Simulate a business day of CRM changes (new/updated rows, later timestamps)."""
     from nexusvenue.mockdata.generate import mutate_delta
