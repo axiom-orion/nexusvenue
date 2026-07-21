@@ -1,0 +1,48 @@
+cluster,property_a,property_b,edge_type,direction,connection,est_overflow_rooms,overflow_semantic,source
+# edge_type: compound | walkway | skybridge | walking-distance | shuttle | sister-brand | conv-center-anchor | neighbor
+# direction: push-out(a overflows to b) | pull-in(a draws from b) | bidirectional
+# connection: physical link + rough time/distance. est_overflow_rooms: rough capacity that can shift across the edge (Ryan rule: 100+ to a sister/neighbor, esp. by a conv center w/ walkways).
+# ================= ORLANDO =================
+OCCC,Hyatt Regency Orlando,Orange County Convention Center,conv-center-anchor,push-out,across I-Drive / walk ~5min,exhibit,anchors 315k + overflows exhibit demand to OCCC,Ryan
+OCCC,Hilton Orlando,Orange County Convention Center,conv-center-anchor,push-out,near-OCCC / walk ~8min,exhibit,anchors 249k + OCCC overflow,Ryan
+OCCC,Hyatt Regency Orlando,Hilton Orlando,neighbor,bidirectional,~0.4mi,150+,Ryan: Hyatt and Hilton cross-push blocks (both by OCCC),Ryan
+OCCC,Rosen Centre Hotel,Orange County Convention Center,walkway,push-out,connected,exhibit,connected to OCCC,rosencentre
+OCCC,Rosen Plaza Hotel,Orange County Convention Center,skybridge,push-out,Gary Sain Skybridge covered,exhibit,direct covered walkway to OCCC,rosenplaza
+OCCC,Rosen Centre Hotel,Rosen Plaza Hotel,sister-brand,bidirectional,~0.3mi,200+,Rosen cross-pushes across its OCCC hotels,Ryan
+OCCC,Rosen Centre Hotel,Rosen Shingle Creek,sister-brand,bidirectional,~2mi shuttle,300+,Rosen multi-hotel block-stretch,Ryan
+OCCC,Rosen Plaza Hotel,Rosen Shingle Creek,sister-brand,bidirectional,~2mi shuttle,300+,Rosen multi-hotel block-stretch,Ryan
+Bonnet Creek,Signia by Hilton Orlando Bonnet Creek,Waldorf Astoria Orlando,compound,bidirectional,shared campus / walk ~3min,200+,Ryan: Signia + Waldorf are a COMPOUND (shared conv space),Ryan
+Bonnet Creek,Signia by Hilton Orlando Bonnet Creek,JW Marriott Orlando Bonnet Creek,neighbor,bidirectional,~1mi,100+,Bonnet Creek pocket neighbor,inferred
+Bonnet Creek,Signia by Hilton Orlando Bonnet Creek,Wyndham Grand Orlando Bonnet Creek,neighbor,bidirectional,~1mi,100+,Bonnet Creek pocket neighbor,inferred
+EPCOT resorts,Walt Disney World Swan and Dolphin,Disney's BoardWalk Inn,walking-distance,bidirectional,~0.3mi Crescent Lake,150+,Ryan: Swan/Dolphin walk to BoardWalk,Ryan
+EPCOT resorts,Walt Disney World Swan and Dolphin,Disney's Yacht & Beach Club,walking-distance,bidirectional,~0.4mi Crescent Lake,150+,Ryan: Swan/Dolphin walk to Yacht & Beach,Ryan
+EPCOT resorts,Disney's BoardWalk Inn,Disney's Yacht & Beach Club,walking-distance,bidirectional,~0.3mi,100+,Crescent Lake ring — all walkable,Ryan
+EPCOT resorts,Walt Disney World Swan and Dolphin,Swan Reserve,compound,bidirectional,same complex,rooms,Ryan: Swan/Dolphin has new lux tower (Swan Reserve),Ryan
+Grande Lakes,The Ritz-Carlton Orlando Grande Lakes,JW Marriott Orlando Grande Lakes,compound,bidirectional,shared campus / walk,200+,shared 169k / 6 ballrooms / 56 breakouts,grandelakes
+Universal core,Loews Royal Pacific Resort,Loews Sapphire Falls Resort,walkway,bidirectional,enclosed a/c walkway,200+,Loews Meeting Complex 247k contiguous,loewshotels
+Universal core,Loews Portofino Bay,Hard Rock Hotel Orlando,sister-brand,bidirectional,shuttle/walk ~5min,150+,Universal core cross-push,Ryan
+Universal core,Loews Portofino Bay,Loews Royal Pacific Resort,sister-brand,bidirectional,walk/shuttle,150+,Universal core cross-push,Ryan
+Universal core,Hard Rock Hotel Orlando,Loews Royal Pacific Resort,sister-brand,bidirectional,walk/shuttle,150+,Universal core cross-push,Ryan
+Epic Universe,Universal Helios Grand Hotel,Universal Stella Nova Resort,shuttle,pull-in,complimentary shuttle,750,Helios has meeting space; Stella Nova = overflow block,uomeetings
+Epic Universe,Universal Helios Grand Hotel,Universal Terra Luna Resort,shuttle,pull-in,complimentary shuttle,750,Terra Luna = overflow block,uomeetings
+Epic Universe,Universal Stella Nova Resort,Universal Terra Luna Resort,sister-brand,bidirectional,adjacent,750,twin overflow room-block hotels,uomeetings
+Standalone-stretch,Caribe Royale Orlando,(neighbor hotels),shuttle,pull-in,shuttle,stretch,Ryan: Caribe shuttles guests IN from other hotels to stretch its block,Ryan
+Disney Springs,Hilton Orlando Buena Vista Palace,Disney Springs,walking-distance,push-out,steps away,exhibit,Official WDW hotel steps from Disney Springs,hilton
+# ===== WDW MEGA-CLUSTER (correction 7/21): Disney convention resorts are OPS-independent but SALES/OVERFLOW-clustered — one sales org (Disney Meetings & Events) + Disney transport (monorail/bus/boat/Skyliner). NOT "Independent". A group can split across resorts; Disney can run an internal CITYWIDE on-property (Coronado conv ctr = anchor). =====
+WDW,Disney's Coronado Springs,Disney's Contemporary Resort,sister-brand,bidirectional,Disney transport (bus),400+,one sales org + property-wide transit; room-block splits across resorts,Ryan/inferred
+WDW,Disney's Coronado Springs,Disney's Grand Floridian,sister-brand,bidirectional,Disney transport (monorail/bus),300+,one sales org + transit,Ryan/inferred
+WDW,Disney's Contemporary Resort,Disney's Grand Floridian,sister-brand,bidirectional,monorail,300+,one sales org + monorail loop,Ryan/inferred
+WDW,Disney's Coronado Springs,Disney's Yacht & Beach Club,sister-brand,bidirectional,Disney transport,300+,one sales org + transit,Ryan/inferred
+WDW,Disney's Coronado Springs,Disney's BoardWalk Inn,sister-brand,bidirectional,Disney transport,200+,one sales org + transit,Ryan/inferred
+WDW,Disney's Coronado Springs,(WDW citywide anchor),conv-center-anchor,pull-in,on-property housing + Disney transit,citywide,Coronado 228k conv ctr can anchor a citywide hosted across Disney resorts,Ryan/inferred
+# ===== CITYWIDE pattern (any market): convention CENTER = anchor (exhibits/general sessions) + HEADQUARTERS hotel (biggest/closest, VIP functions) + housing block spread across MANY hotels (CVB housing bureau) + shuttle grid. Each hotel runs its own floor for its slice. The overflow network at max scale. =====
+# ================= DALLAS =================
+Dallas downtown,Omni Dallas Hotel,Kay Bailey Hutchison Convention Center,skybridge,push-out,skybridge covered,exhibit,connected to 2.1M-sqft KBHCC,omnihotels
+Dallas downtown,Sheraton Dallas Hotel,Hyatt Regency Dallas,neighbor,bidirectional,downtown ~0.6mi,150+,downtown 3-hotel convention partnership,conventionsouth
+Dallas downtown,Sheraton Dallas Hotel,Omni Dallas Hotel,neighbor,bidirectional,downtown ~0.7mi,150+,downtown convention cross-push,conventionsouth
+Dallas downtown,Hyatt Regency Dallas,Kay Bailey Hutchison Convention Center,neighbor,push-out,~0.5mi,exhibit,near-KBHCC overflow,inferred
+# ================= NASHVILLE =================
+Nashville downtown,Omni Nashville Hotel,Music City Center,walkway,push-out,connected,exhibit,connected to 1.2M-sqft Music City Center,omnihotels
+Nashville downtown,Renaissance Nashville Hotel,Music City Center,walkway,push-out,connected via Fifth+Broadway,exhibit,Music City Center access,marriott
+Nashville downtown,Omni Nashville Hotel,Renaissance Nashville Hotel,neighbor,bidirectional,downtown ~0.3mi,150+,both connect to Music City Center — cross-push,inferred
+Nashville downtown,Grand Hyatt Nashville,Music City Center,neighbor,push-out,Nashville Yards ~0.5mi,150+,Nashville Yards near MCC,inferred
