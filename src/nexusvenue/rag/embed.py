@@ -86,7 +86,7 @@ def embed_graph(driver: Driver | None = None, batch_size: int = 50,
     counts = {}
 
     missing_filter = "AND n.embedding IS NULL " if missing_only else ""
-    for label, text_prop in [("BEO", "ops_notes"), ("RFP", "raw_text")]:
+    for label, text_prop in [("BEO", "ops_notes"), ("RFP", "raw_text"), ("Concern", "description")]:
         with driver.session() as s:
             rows = s.run(
                 f"MATCH (n:{label}) WHERE n.{text_prop} IS NOT NULL {missing_filter}"

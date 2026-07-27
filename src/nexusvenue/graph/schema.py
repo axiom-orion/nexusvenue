@@ -12,11 +12,14 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT beo_id IF NOT EXISTS FOR (b:BEO) REQUIRE b.id IS UNIQUE",
     "CREATE CONSTRAINT rfp_id IF NOT EXISTS FOR (r:RFP) REQUIRE r.id IS UNIQUE",
     "CREATE CONSTRAINT syncstate_id IF NOT EXISTS FOR (w:SyncState) REQUIRE w.id IS UNIQUE",
+    "CREATE CONSTRAINT role_id IF NOT EXISTS FOR (role:Role) REQUIRE role.id IS UNIQUE",
+    "CREATE CONSTRAINT concern_id IF NOT EXISTS FOR (c:Concern) REQUIRE c.id IS UNIQUE",
 ]
 
 VECTOR_INDEXES = [
     ("beo_notes_vec", "BEO", "embedding"),
     ("rfp_text_vec", "RFP", "embedding"),
+    ("concern_vec", "Concern", "embedding"),
 ]
 
 

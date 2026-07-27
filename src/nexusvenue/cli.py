@@ -48,6 +48,31 @@ def venues(dry_run):
 
 
 @cli.command()
+@click.option("--dry-run", is_flag=True, help="Show the role/concern data without touching Neo4j.")
+def roles(dry_run):
+    """Load the altitude/lane/worry knowledge graph: Role, Concern, and the
+    ESCALATES_TO/HANDS_OFF_TO/ROUTES_THROUGH edges between them."""
+    from nexusvenue.etl.role_intel import ROLES, CONCERNS, WORRIES, load_role_intel
+    if dry_run:
+        click.echo(f"{len(ROLES)} roles, {len(CONCERNS)} concerns, {len(WORRIES)} worry links")
+        click.echo("sample roles: " + ", ".join(f"{r['id']}({r['altitude']}/{r['lane']})" for r in ROLES[:5]))
+        return
+    click.echo(load_role_intel())
+
+
+@cli.command("role-search")
+@click.argument("query")
+@click.option("-k", default=5, help="Top-k matching concerns to retrieve.")
+def role_search(query, k):
+    """Hybrid retrieval over the role/concern graph: vector-match a query to
+    the concerns it resembles, then traverse each matched role's real
+    escalation/handoff/routing structure."""
+    import json
+    from nexusvenue.rag.roles import retrieve_role_context
+    click.echo(json.dumps(retrieve_role_context(query, k=k), indent=2, default=str))
+
+
+@cli.command()
 def delta():
     """Simulate a business day of CRM changes (new/updated rows, later timestamps)."""
     from nexusvenue.mockdata.generate import mutate_delta
