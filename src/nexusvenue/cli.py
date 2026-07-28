@@ -14,11 +14,13 @@ def cli():
 
 
 @cli.command()
-def generate():
+@click.option("--company-flavor", default="acme", type=click.Choice(["acme", "globex"]),
+              help="Which tenant account-name pool to generate (see mockdata/generate.py).")
+def generate(company_flavor):
     """Generate the messy multi-property CRM (SQLite) + retrieval gold set."""
     from nexusvenue.mockdata.generate import generate as gen
-    counts = gen()
-    click.echo(f"wrote crm.db: {counts}")
+    counts = gen(company_flavor=company_flavor)
+    click.echo(f"wrote crm.db ({company_flavor}): {counts}")
     click.echo("wrote goldset.json")
 
 

@@ -36,28 +36,60 @@ PROPERTIES = [
 
 # Canonical corporate accounts with per-property name variants (the entity
 # resolution challenge). (canonical, industry, [variants])
-ACCOUNTS = [
-    ("Calder & Voss", "Professional Services", ["Calder & Voss", "Calder & Voss LLP", "CALDER & VOSS ADVISORY LLP"]),
-    ("Luminark", "Technology", ["Luminark", "Luminark Cloud, Inc.", "LMK"]),
-    ("Bellwick", "Pharmaceutical", ["Bellwick", "Bellwick Inc.", "Bellwick Incorporated"]),
-    ("Harrowgate Capital", "Financial Services", ["Harrowgate Capital", "H. Gate Capital", "Harrowgate Capital & Co"]),
-    ("Kestrel Dynamics", "Aerospace & Defense", ["Kestrel Dynamics", "Kestrel Dynamics Corp.", "KESTREL-DYNAMICS"]),
-    ("Hartley & Vale", "Consumer Goods", ["Hartley & Vale", "H&V", "Hartley and Vale Co"]),
-    ("Ashcombe", "Professional Services", ["Ashcombe", "Ashcombe PLC", "Ashcombe Federal Services"]),
-    ("Octavian", "Technology", ["Octavian", "Octavian Networks", "Octavian Networks, Inc."]),
-    ("NovaCrest", "Pharmaceutical", ["NovaCrest", "NovaCrest Inc.", "Novacrest"]),
-    ("Shieldstone Mutual", "Insurance", ["Shieldstone Mutual", "Shieldstone Insurance", "Shieldstone Mutual Group"]),
-    ("Auberly Corporate", "Hospitality", ["Auberly Corporate", "Auberly Hotels Corp", "AUBERLY"]),
-    ("Ironvale Electric", "Industrial", ["Ironvale Electric", "Ironvale", "Ironvale Electric Co."]),
-    ("Pemberton Ames", "Financial Services", ["Pemberton Ames", "Pemberton Ames Financial", "PA Financial"]),
-    ("Harborline Restaurants", "Hospitality", ["Harborline Restaurants", "Harborline", "Harborline Restaurants Inc"]),
-    ("Crescent Bay Health", "Healthcare", ["Crescent Bay Health", "Crescent Bay Health South Florida", "Crescent Bay SF"]),
-    ("Lakeshore Medicine", "Healthcare", ["Lakeshore Medicine", "Lakeshore Memorial", "LS Medicine"]),
-    ("Wexford Markets", "Retail", ["Wexford Markets", "Wexford Super Markets", "Wexford Supermarkets Inc"]),
-    ("Quantell Solutions", "Technology", ["Quantell Solutions", "Quantell", "Quantell Solutions Inc."]),
-    ("Aerlight Airways", "Travel", ["Aerlight Airways", "Aerlight Airways Holdings", "ALW"]),
-    ("Whitmore Rand", "Insurance", ["Whitmore Rand", "Whitmore & Rand", "Whitmore & Rand Companies"]),
-]
+#
+# Two flavors keyed by company_flavor -- each tenant's private CRM graph
+# gets a DIFFERENT account-name pool (so two tenants' graphs don't read as
+# a literal copy of each other) while sharing the same PROPERTIES list
+# (same property codes/BEO-numbering shape) below, which is the point:
+# tenant BEO ids can overlap in raw string (e.g. both tenants get a
+# "MIA-BEO00001") without ever colliding, because each tenant lives in its
+# own database entirely.
+ACCOUNTS_BY_FLAVOR = {
+    "acme": [
+        ("Calder & Voss", "Professional Services", ["Calder & Voss", "Calder & Voss LLP", "CALDER & VOSS ADVISORY LLP"]),
+        ("Luminark", "Technology", ["Luminark", "Luminark Cloud, Inc.", "LMK"]),
+        ("Bellwick", "Pharmaceutical", ["Bellwick", "Bellwick Inc.", "Bellwick Incorporated"]),
+        ("Harrowgate Capital", "Financial Services", ["Harrowgate Capital", "H. Gate Capital", "Harrowgate Capital & Co"]),
+        ("Kestrel Dynamics", "Aerospace & Defense", ["Kestrel Dynamics", "Kestrel Dynamics Corp.", "KESTREL-DYNAMICS"]),
+        ("Hartley & Vale", "Consumer Goods", ["Hartley & Vale", "H&V", "Hartley and Vale Co"]),
+        ("Ashcombe", "Professional Services", ["Ashcombe", "Ashcombe PLC", "Ashcombe Federal Services"]),
+        ("Octavian", "Technology", ["Octavian", "Octavian Networks", "Octavian Networks, Inc."]),
+        ("NovaCrest", "Pharmaceutical", ["NovaCrest", "NovaCrest Inc.", "Novacrest"]),
+        ("Shieldstone Mutual", "Insurance", ["Shieldstone Mutual", "Shieldstone Insurance", "Shieldstone Mutual Group"]),
+        ("Auberly Corporate", "Hospitality", ["Auberly Corporate", "Auberly Hotels Corp", "AUBERLY"]),
+        ("Ironvale Electric", "Industrial", ["Ironvale Electric", "Ironvale", "Ironvale Electric Co."]),
+        ("Pemberton Ames", "Financial Services", ["Pemberton Ames", "Pemberton Ames Financial", "PA Financial"]),
+        ("Harborline Restaurants", "Hospitality", ["Harborline Restaurants", "Harborline", "Harborline Restaurants Inc"]),
+        ("Crescent Bay Health", "Healthcare", ["Crescent Bay Health", "Crescent Bay Health South Florida", "Crescent Bay SF"]),
+        ("Lakeshore Medicine", "Healthcare", ["Lakeshore Medicine", "Lakeshore Memorial", "LS Medicine"]),
+        ("Wexford Markets", "Retail", ["Wexford Markets", "Wexford Super Markets", "Wexford Supermarkets Inc"]),
+        ("Quantell Solutions", "Technology", ["Quantell Solutions", "Quantell", "Quantell Solutions Inc."]),
+        ("Aerlight Airways", "Travel", ["Aerlight Airways", "Aerlight Airways Holdings", "ALW"]),
+        ("Whitmore Rand", "Insurance", ["Whitmore Rand", "Whitmore & Rand", "Whitmore & Rand Companies"]),
+    ],
+    "globex": [
+        ("Fennimore & Cole", "Professional Services", ["Fennimore & Cole", "Fennimore & Cole LLP", "FENNIMORE COLE ADVISORY"]),
+        ("Brackenridge", "Technology", ["Brackenridge", "Brackenridge Cloud, Inc.", "BRK"]),
+        ("Thornfield", "Pharmaceutical", ["Thornfield", "Thornfield Inc.", "Thornfield Incorporated"]),
+        ("Ashworth Capital", "Financial Services", ["Ashworth Capital", "A. Worth Capital", "Ashworth Capital & Co"]),
+        ("Corvid Systems", "Aerospace & Defense", ["Corvid Systems", "Corvid Systems Corp.", "CORVID-SYSTEMS"]),
+        ("Marrow & Finch", "Consumer Goods", ["Marrow & Finch", "M&F", "Marrow and Finch Co"]),
+        ("Delacroix Group", "Professional Services", ["Delacroix Group", "Delacroix PLC", "Delacroix Federal Services"]),
+        ("Ferrovax", "Technology", ["Ferrovax", "Ferrovax Networks", "Ferrovax Networks, Inc."]),
+        ("Solenne Pharma", "Pharmaceutical", ["Solenne Pharma", "Solenne Inc.", "Solenne"]),
+        ("Griffon Mutual", "Insurance", ["Griffon Mutual", "Griffon Insurance", "Griffon Mutual Group"]),
+        ("Castellane Hotels", "Hospitality", ["Castellane Hotels", "Castellane Corp", "CASTELLANE"]),
+        ("Vantage Electric", "Industrial", ["Vantage Electric", "Vantage", "Vantage Electric Co."]),
+        ("Halloway Ames", "Financial Services", ["Halloway Ames", "Halloway Ames Financial", "HA Financial"]),
+        ("Portmire Restaurants", "Hospitality", ["Portmire Restaurants", "Portmire", "Portmire Restaurants Inc"]),
+        ("Amberfield Health", "Healthcare", ["Amberfield Health", "Amberfield Health South Florida", "Amberfield SF"]),
+        ("Northgate Medicine", "Healthcare", ["Northgate Medicine", "Northgate Memorial", "NG Medicine"]),
+        ("Cordwell Markets", "Retail", ["Cordwell Markets", "Cordwell Super Markets", "Cordwell Supermarkets Inc"]),
+        ("Brightloom Solutions", "Technology", ["Brightloom Solutions", "Brightloom", "Brightloom Solutions Inc."]),
+        ("Sablewing Airways", "Travel", ["Sablewing Airways", "Sablewing Airways Holdings", "SBW"]),
+        ("Kestwood Rand", "Insurance", ["Kestwood Rand", "Kestwood & Rand", "Kestwood & Rand Companies"]),
+    ],
+}
 
 AGENCIES = [
     "Meridian Event Partners", "BlueSky Meetings & Incentives", "Vantage Point Events",
@@ -203,8 +235,24 @@ def _phone(rng: random.Random) -> str:
     return rng.choice(styles).format(rng.randint(200, 989), rng.randint(200, 989), rng.randint(1000, 9999))
 
 
-def generate(out_db: Path | None = None, goldset_path: Path | None = None) -> dict:
-    rng = random.Random(SEED)
+# Explicit, deterministic per-flavor seed offsets -- NOT Python's built-in
+# hash() on the flavor string, which is randomized per-process (PYTHONHASHSEED)
+# and would silently break generate()'s documented "byte-identical every run"
+# guarantee that other code (Vouch's Docker image bake, sync_crm's delta
+# simulation) already depends on.
+_FLAVOR_SEED_OFFSET = {"acme": 0, "globex": 1000}
+
+
+def generate(out_db: Path | None = None, goldset_path: Path | None = None,
+            company_flavor: str = "acme") -> dict:
+    """company_flavor picks which tenant's account-name pool to generate
+    (see ACCOUNTS_BY_FLAVOR) and offsets the RNG seed so the two flavors'
+    attendee counts/revenue/property assignments differ too -- not just a
+    reseeded copy of the same numbers under different names."""
+    if company_flavor not in ACCOUNTS_BY_FLAVOR:
+        raise ValueError(f"unknown company_flavor {company_flavor!r} -- choose one of {list(ACCOUNTS_BY_FLAVOR)}")
+    ACCOUNTS = ACCOUNTS_BY_FLAVOR[company_flavor]
+    rng = random.Random(SEED + _FLAVOR_SEED_OFFSET[company_flavor])
     out_db = out_db or settings.crm_db
     goldset_path = goldset_path or settings.goldset_path
     out_db.parent.mkdir(parents=True, exist_ok=True)
