@@ -83,8 +83,8 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
 | `nexusvenue delta` | Simulate a business day of CRM changes (new/updated rows) |
 | `nexusvenue sync` | Incremental sync past the watermark; embeds new nodes only. Run it twice — the second run is a no-op |
 | `nexusvenue embed` | Embed BEO notes + RFP text onto nodes (Gemini or offline hash backend) |
-| `nexusvenue search "<query>"` | Retrieval only — inspect the subgraph context |
-| `nexusvenue ask "<rfp>" [--with-judge] [--judge-provider gemini\|grok]` | Full GraphRAG → Win Strategy Blueprint (→ judge verdict) |
+| `nexusvenue search "<query>" [--as-of YYYY-MM-DD]` | Retrieval only — inspect the subgraph context, optionally time-sliced |
+| `nexusvenue ask "<rfp>" [--with-judge] [--judge-provider gemini\|grok] [--as-of YYYY-MM-DD]` | Full GraphRAG → Win Strategy Blueprint (→ judge verdict) |
 | `nexusvenue judge-agreement "<rfp>"` | Grade one blueprint with every judge family that has a key (Claude + Gemini + Grok), report cross-family agreement |
 | `nexusvenue showcase` | Run the SQL-vs-Cypher comparison queries live |
 | `nexusvenue eval-retrieval` | Precision/recall@k against the gold set |
@@ -107,6 +107,9 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   graph forks ("Ashcombe Incorporated" must land on the existing Ashcombe
   node, not mint a duplicate). `sync()` also re-infers derived edges
   (`REPRESENTS`) and advances the watermark only after a successful upsert.
+  Extraction is inclusive (`>=`) and `SyncState` stores the ids of rows
+  stamped exactly at the watermark, so a row committed late with an equal
+  stamp is still caught while re-runs stay no-ops.
 - **Why cross-family judges?** LLM-as-a-judge has a documented failure mode:
   self-preference bias — a judge grades output from its own model family more
   favorably. The generator here is Claude, so the judge can also run on
@@ -135,6 +138,60 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   with Pydantic schemas makes the blueprint and the judge verdict
   guaranteed-parseable, so downstream automation (CRM writeback, dashboards)
   never string-munges model output.
+- **Why time-sliced retrieval?** A backtest that replays a historical RFP must
+  not be grounded on bookings that hadn't happened yet. `--as-of` restricts the
+  vector hits, account portfolios and the agency "represents" set to events
+  before the date. That last one is rebuilt from pre-cutoff bookings, because
+  the `REPRESENTS` edge is inferred from *all* bookings and would leak the
+  future. Entity resolution and planner-to-agency employment stay the graph's
+  current snapshot; only event-level facts are sliced.
+- **Why does the judge's gate live in code?** The two numeric thresholds
+  (context precision ≥ 0.9, actionability ≥ 3) are enforced for every model
+  family rather than trusted from the model's own `passed` flag. The model keeps
+  the one call a number can't make: whether a hallucination it listed is
+  *material*.
+
+## Showcase site
+
+`web/` is a dependency-free static walkthrough of the pipeline: no framework, no
+build step. Every number on it comes from running this repo's own code over the
+seeded mock CRM, and every company in it is fictional. The one exception, the Win
+Strategy Blueprint, is a labelled representative sample assembled from the real
+retrieved context, not model output.
+
+```bash
+python scripts/export_showcase_data.py           # regenerate web/data.js (no Neo4j, no keys)
+python scripts/export_showcase_data.py --check   # fail if web/data.js is stale
+python -m http.server -d web 8000                # preview at http://localhost:8000
+```
+
+### Deploy on Cloudflare
+
+The site is served as Cloudflare Workers static assets (`wrangler.jsonc` points
+`assets.directory` at `web/`). There is no Worker script and no build command.
+
+1. In the Cloudflare dashboard go to **Workers & Pages → Create application →
+   Import a repository** and pick this repo (the Cloudflare GitHub app needs
+   access to it).
+2. Name the Worker **`nexusvenue`**. It must match `name` in `wrangler.jsonc` or
+   the build fails. Set the production branch to `main`, leave the build command
+   empty, and keep the default deploy command, `npx wrangler deploy`.
+3. Every push to `main` deploys. Other branches get preview URLs when
+   non-production branch builds are enabled.
+
+To deploy by hand instead: `npx wrangler login && npx wrangler deploy`. Security
+headers, including a Content-Security-Policy, live in `web/_headers`.
+
+## Tests
+
+```bash
+pip install pytest && pytest
+```
+
+Runs without Neo4j or API keys: incremental-sync logic against the mock CRM and
+its delta scenario, the judge gate, time-sliced retrieval plumbing, and a check
+that `web/data.js` matches what the code produces today. The Cypher itself needs
+a live database: `nexusvenue demo && nexusvenue delta && nexusvenue sync`.
 
 ## API keys
 

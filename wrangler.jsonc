@@ -1,0 +1,11 @@
+{
+  // The NexusVenue showcase: a static site served from Cloudflare's edge as
+  // Workers static assets (no Worker script, no build step).
+  // With Workers Builds, the Worker name in the Cloudflare dashboard must equal
+  // `name` here or the build fails.
+  "name": "nexusvenue",
+  "compatibility_date": "2026-10-08",
+  "assets": {
+    "directory": "./web"
+  }
+}
