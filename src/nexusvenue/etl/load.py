@@ -25,6 +25,8 @@ from neo4j import Driver
 
 from nexusvenue.etl.extract import extract
 from nexusvenue.etl.resolve import (
+    account_domains,
+    choose_display_name,
     match_account,
     resolve_accounts,
     resolve_contacts,
@@ -42,7 +44,7 @@ ACCOUNT_UPSERT = """
 UNWIND $rows AS r
 MERGE (a:Account {id: r.canonical_id})
 SET a.name = r.canonical_name, a.industry = r.industry,
-    a.aliases = r.aliases, a.source_ids = r.source_ids
+    a.aliases = r.aliases, a.source_ids = r.source_ids, a.domain = r.domain
 """
 
 PLANNER_UPSERT = """
@@ -144,21 +146,22 @@ def _drop_boundary(raw: dict[str, list[dict]], watermark: str,
     }
 
 
-def _merge_account(target: dict, row: dict) -> None:
+def _merge_account(target: dict, row: dict, domain: str | None = None) -> None:
     """Fold one delta account row into a canonical account (mutates `target`).
 
     Same rules as resolve_accounts, so a full rebuild and a sync agree: aliases
-    and source ids accumulate, the shortest variant is the display name, and the
-    industry is first-wins — except that a row restating an already-known source
-    row (a CRM correction) updates it."""
+    and source ids accumulate, the display name is chosen from the set of
+    variants (an abbreviation never wins), the industry and contact domain are
+    first-wins — except that a row restating an already-known source row (a CRM
+    correction) updates the industry."""
     is_update = row["account_id"] in target["source_ids"]
     target["aliases"] = sorted(set(target["aliases"]) | {row["account_name"]})
     target["source_ids"] = sorted(set(target["source_ids"]) | {row["account_id"]})
-    current = target.get("canonical_name")
-    if not current or len(row["account_name"]) < len(current):
-        target["canonical_name"] = row["account_name"]
+    target["canonical_name"] = choose_display_name(target["aliases"])
     if row.get("industry") and (is_update or not target.get("industry")):
         target["industry"] = row["industry"]
+    if domain and not target.get("domain"):
+        target["domain"] = domain
 
 
 def _merge_planner(target: dict, row: dict) -> None:
@@ -185,7 +188,7 @@ def _resolve_delta(raw: dict[str, list[dict]], existing_accounts: list[dict],
     company, or two rows for one new person, still collapse onto one node. Pure
     function (no database access) so the identity rules are unit-testable.
 
-    existing_accounts: {id, name, industry, aliases, source_ids}
+    existing_accounts: {id, name, industry, domain, aliases, source_ids}
     existing_planners: {id, email, name, title, agency_id, source_ids}
 
     Returns the resolved state of every canonical the delta touched, shaped for
@@ -195,19 +198,23 @@ def _resolve_delta(raw: dict[str, list[dict]], existing_accounts: list[dict],
     """
     accounts = [
         {"canonical_id": a["id"], "canonical_name": a.get("name"), "industry": a.get("industry"),
-         "aliases": list(a.get("aliases") or []), "source_ids": list(a.get("source_ids") or []),
-         "existing": True, "touched": False}
+         "domain": a.get("domain"), "aliases": list(a.get("aliases") or []),
+         "source_ids": list(a.get("source_ids") or []), "existing": True, "touched": False}
         for a in existing_accounts
     ]
     taken = {a["canonical_id"] for a in accounts}
     new_seq, account_rows_merged = 1, 0
+    delta_domains = account_domains(raw["accounts"], raw["contacts"])  # from this batch's contacts
     for r in raw["accounts"]:
+        domain = delta_domains.get(r["account_id"])
         hit = match_account(
             r["account_name"],
-            [{"id": a["canonical_id"], "aliases": a["aliases"]} for a in accounts])
+            [{"id": a["canonical_id"], "aliases": a["aliases"],
+              "domain": a["domain"], "industry": a["industry"]} for a in accounts],
+            domain=domain, industry=r.get("industry"))
         if hit:
             target = next(a for a in accounts if a["canonical_id"] == hit)
-            _merge_account(target, r)
+            _merge_account(target, r, domain)
             target["touched"] = True
             if target["existing"]:
                 account_rows_merged += 1
@@ -218,7 +225,7 @@ def _resolve_delta(raw: dict[str, list[dict]], existing_accounts: list[dict],
             taken.add(cid)
             accounts.append({
                 "canonical_id": cid, "canonical_name": r["account_name"],
-                "industry": r.get("industry"), "aliases": [r["account_name"]],
+                "industry": r.get("industry"), "domain": domain, "aliases": [r["account_name"]],
                 "source_ids": [r["account_id"]], "existing": False, "touched": True,
             })
 
@@ -296,7 +303,7 @@ def load(driver: Driver | None = None, verbose: bool = True) -> str:
     apply_schema(driver)
 
     raw = extract()
-    accounts = resolve_accounts(raw["accounts"])
+    accounts = resolve_accounts(raw["accounts"], raw["contacts"])
     contacts = resolve_contacts(raw["contacts"])
     report = resolution_report(raw["accounts"], accounts, raw["contacts"], contacts)
 
@@ -355,7 +362,7 @@ def sync(driver: Driver | None = None) -> str:
         # --- incremental entity resolution against the live graph ---
         existing_accounts = s.run(
             "MATCH (a:Account) RETURN a.id AS id, a.name AS name, a.industry AS industry, "
-            "a.aliases AS aliases, a.source_ids AS source_ids"
+            "a.domain AS domain, a.aliases AS aliases, a.source_ids AS source_ids"
         ).data()
         existing_planners = s.run(
             "MATCH (p:Planner) OPTIONAL MATCH (p)-[:EMPLOYED_BY]->(g:Agency) "

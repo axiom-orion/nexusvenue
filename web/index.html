@@ -61,11 +61,11 @@
       <div class="wrap">
         <div class="kicker">Entity resolution</div>
         <h2>Collapse the variants, keep the provenance</h2>
-        <p class="sub">RapidFuzz <code>token_sort_ratio ≥ 87</code> plus union-find clustering (after legal-suffix normalization) merges name variants into one canonical node per real-world entity. Contacts collapse on email. Every canonical node keeps its <code>aliases</code> and <code>source_ids</code> so nothing is lost.</p>
+        <p class="sub">RapidFuzz <code>token_sort_ratio ≥ 87</code> plus union-find clustering (after legal-suffix normalization) merges name variants into one canonical node per real-world entity. Contacts collapse on email. Every canonical node keeps its <code>aliases</code> and <code>source_ids</code> so nothing is lost. Names alone can't connect an abbreviation to its company, so accounts whose contacts share a corporate email domain <em>and</em> an industry are joined too, with name evidence always taking precedence.</p>
         <div class="stats" id="resolve-stats"></div>
         <h3 class="h-sub">Real merge clusters</h3>
         <div class="card" id="merge-clusters"></div>
-        <h3 class="h-sub">What it still misses</h3>
+        <h3 class="h-sub">What contact evidence adds</h3>
         <div class="card" id="er-misses"></div>
       </div>
     </section>
