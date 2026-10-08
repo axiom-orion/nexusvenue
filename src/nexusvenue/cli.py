@@ -105,10 +105,12 @@ def embed():
 @cli.command()
 @click.argument("query")
 @click.option("-k", default=6, help="Top-k similar past events to retrieve.")
-def search(query, k):
+@click.option("--as-of", default=None, metavar="YYYY-MM-DD",
+              help="Time-sliced retrieval: only events dated before this (for backtests).")
+def search(query, k, as_of):
     """Hybrid retrieval only (no LLM): show the subgraph context for a query."""
     from nexusvenue.rag.retrieve import retrieve
-    click.echo(json.dumps(retrieve(query, k=k), indent=2, default=str))
+    click.echo(json.dumps(retrieve(query, k=k, as_of=as_of), indent=2, default=str))
 
 
 @cli.command()
@@ -118,10 +120,12 @@ def search(query, k):
 @click.option("--judge-provider", type=click.Choice(["anthropic", "gemini", "grok"]), default=None,
               help="Judge model family (default: JUDGE_PROVIDER env, then anthropic). "
                    "gemini/grok = cross-family judging, controls for self-preference bias.")
-def ask(rfp_text, k, with_judge, judge_provider):
+@click.option("--as-of", default=None, metavar="YYYY-MM-DD",
+              help="Time-sliced retrieval: ground only on events dated before this (for backtests).")
+def ask(rfp_text, k, with_judge, judge_provider, as_of):
     """Full GraphRAG: retrieve subgraph, generate a Win Strategy Blueprint (Claude)."""
     from nexusvenue.rag.advisor import advise
-    blueprint, context = advise(rfp_text, k=k)
+    blueprint, context = advise(rfp_text, k=k, as_of=as_of)
     click.echo(blueprint.model_dump_json(indent=2))
     if with_judge or judge_provider:
         from nexusvenue.evals.judge import judge

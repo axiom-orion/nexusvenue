@@ -56,9 +56,14 @@ class WinStrategyBlueprint(BaseModel):
     next_steps: list[str] = Field(description="Concrete actions for the sales team, in priority order")
 
 
-def advise(rfp_text: str, k: int = 6, context: dict | None = None) -> tuple[WinStrategyBlueprint, dict]:
-    """Run retrieval (unless context supplied) and synthesize the blueprint."""
-    context = context or retrieve(rfp_text, k=k)
+def advise(rfp_text: str, k: int = 6, context: dict | None = None,
+           as_of: str | None = None) -> tuple[WinStrategyBlueprint, dict]:
+    """Run retrieval (unless context supplied) and synthesize the blueprint.
+
+    `as_of` time-slices retrieval to events dated before it — required for
+    honest backtests, where a replayed historical RFP must not be grounded on
+    bookings that hadn't happened yet."""
+    context = context or retrieve(rfp_text, k=k, as_of=as_of)
     client = anthropic.Anthropic()
 
     response = client.messages.parse(

@@ -48,6 +48,32 @@ class JudgeVerdict(BaseModel):
     passed: bool = Field(description="True only if zero material hallucinations AND context_precision >= 0.9 AND actionability_score >= 3")
 
 
+PASS_MIN_PRECISION = 0.9
+PASS_MIN_ACTIONABILITY = 3
+
+
+def _finalize(verdict: JudgeVerdict) -> JudgeVerdict:
+    """Enforce the rubric's measurable criteria in code instead of trusting the
+    model's own `passed` flag, so the gate can't drift from the rubric whichever
+    model family produced the verdict.
+
+    - Below either numeric threshold (context_precision, actionability) a
+      verdict cannot pass, whatever the model asserted.
+    - At or above both with no hallucinations listed, it passes.
+    - If hallucinations are listed, the model's call stands: whether one is
+      *material* is the judge's judgment (the rubric's "zero material
+      hallucinations"), and it is exactly the disagreement `judge-agreement`
+      surfaces across model families.
+    """
+    numbers_ok = (verdict.context_precision >= PASS_MIN_PRECISION
+                  and verdict.actionability_score >= PASS_MIN_ACTIONABILITY)
+    if not numbers_ok:
+        verdict.passed = False
+    elif not verdict.hallucinations:
+        verdict.passed = True
+    return verdict
+
+
 def _user_prompt(blueprint: dict, context: dict) -> str:
     return (
         "## Retrieved knowledge-graph context (ground truth)\n"
@@ -70,11 +96,11 @@ def judge(blueprint: dict, context: dict, provider: str | None = None) -> JudgeV
     """
     provider = provider or settings.judge_provider
     if provider == "anthropic":
-        return _judge_anthropic(blueprint, context)
+        return _finalize(_judge_anthropic(blueprint, context))
     if provider == "gemini":
-        return _judge_gemini(blueprint, context)
+        return _finalize(_judge_gemini(blueprint, context))
     if provider == "grok":
-        return _judge_grok(blueprint, context)
+        return _finalize(_judge_grok(blueprint, context))
     raise ValueError(f"unknown judge provider {provider!r} (use one of {PROVIDERS})")
 
 

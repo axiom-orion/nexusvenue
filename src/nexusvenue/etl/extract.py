@@ -1,8 +1,13 @@
 """Extract the raw relational CRM rows from SQLite.
 
 `since` filters on last_modified (the SystemModstamp analog): pass the sync
-watermark to pull only rows changed after the previous load — the extraction
+watermark to pull only rows changed since the previous load — the extraction
 half of incremental sync.
+
+The comparison is inclusive (>=): a row committed with a stamp exactly equal
+to the watermark *after* the previous extraction read it would be silently
+lost under a strict >. Rows already processed at the boundary are filtered
+out by the loader against the SyncState boundary ids, so re-runs stay no-ops.
 """
 
 import sqlite3
@@ -24,7 +29,7 @@ def extract(db_path: Path | None = None, since: str | None = None) -> dict[str, 
     else:
         out = {
             t: [dict(r) for r in con.execute(
-                f"SELECT * FROM {t} WHERE last_modified > ?", (since,))]
+                f"SELECT * FROM {t} WHERE last_modified >= ?", (since,))]
             for t in TABLES
         }
     con.close()
