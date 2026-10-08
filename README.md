@@ -44,7 +44,7 @@ Salesforce-to-graph pipeline needs.
 | Stage | Code | What it shows |
 |---|---|---|
 | Mock CRM generator | `mockdata/generate.py` | Realistic dirty data: per-property name variants, contact spelling drift, unstructured BEO ops-notes |
-| ETL + entity resolution | `etl/` | RapidFuzz + union-find clustering with provenance; email-keyed contact dedupe |
+| ETL + entity resolution | `etl/` | RapidFuzz + union-find clustering with provenance; contact-email-domain evidence for abbreviations; email-keyed contact dedupe |
 | Graph modeling | `etl/load.py`, `graph/schema.py` | Relational → graph schema pivot, constraints, batched `UNWIND`/`MERGE` loads, vector indexes |
 | Incremental sync | `etl/load.py` (`sync`) | Watermark on a `SyncState` node, delta extraction on `last_modified`, incremental ER against the live graph, new-nodes-only embedding — idempotent |
 | SQL → Cypher | `graph/queries.py`, [docs/sql-vs-cypher.md](docs/sql-vs-cypher.md) | Side-by-side legacy SQL and optimized Cypher, runnable against live data |
@@ -88,6 +88,7 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
 | `nexusvenue judge-agreement "<rfp>"` | Grade one blueprint with every judge family that has a key (Claude + Gemini + Grok), report cross-family agreement |
 | `nexusvenue showcase` | Run the SQL-vs-Cypher comparison queries live |
 | `nexusvenue eval-retrieval` | Precision/recall@k against the gold set |
+| `nexusvenue eval-resolution [--name-only]` | Entity-resolution pairwise precision/recall against the generator's ground truth |
 | `nexusvenue demo` | generate → etl → embed → eval in one shot |
 
 ## Design decisions worth asking me about
@@ -100,6 +101,18 @@ Browse the graph at http://localhost:7474 (`neo4j` / `nexusvenue`).
   the whole value proposition; without ER, "Calder & Voss" is three small
   accounts instead of one whale. Resolution keeps full provenance
   (`aliases`, `source_ids`) on the canonical node.
+- **Why use contacts to resolve accounts?** Fuzzy name matching merges legal-suffix
+  variants but can't connect "LMK" to "Luminark" (names alone: precision 1.00,
+  recall 0.39 on the mock CRM). The people filed under an account usually share
+  one corporate email domain, so clusters whose dominant contact domain *and*
+  industry agree are joined too (recall 1.00, precision still 1.00). It is built
+  to fail safe: names always outrank it, a cluster's domain must be the strict
+  majority of its members' (one stray contact can't merge two companies),
+  free-mail never counts, and an ambiguous match is no match. Full load and
+  `sync` apply the same rules. The mock data gives every contact a
+  company-derived domain, which flatters the number; with 40% of contacts on
+  free-mail addresses recall is 0.89 (acme) / 0.65 (globex), precision unchanged.
+  `nexusvenue eval-resolution` reproduces these numbers.
 - **Why is incremental sync harder than the full load?** Entity resolution.
   A full rebuild clusters all rows at once; a delta row must be resolved
   against *canonical nodes already in the graph* using the same
@@ -188,9 +201,10 @@ headers, including a Content-Security-Policy, live in `web/_headers`.
 pip install pytest && pytest
 ```
 
-Runs without Neo4j or API keys: incremental-sync logic against the mock CRM and
-its delta scenario, the judge gate, time-sliced retrieval plumbing, and a check
-that `web/data.js` matches what the code produces today. The Cypher itself needs
+Runs without Neo4j or API keys: entity resolution scored against ground truth
+(including conflicting and noisy contact evidence), incremental-sync logic against
+the mock CRM and its delta scenario, the judge gate, time-sliced retrieval
+plumbing, and a check that `web/data.js` matches what the code produces today. The Cypher itself needs
 a live database: `nexusvenue demo && nexusvenue delta && nexusvenue sync`.
 
 ## API keys

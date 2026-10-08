@@ -101,8 +101,8 @@ def _graph_state(raw):
     """What the Neo4j graph holds after a full load, in sync()'s query shape."""
     accounts = [
         {"id": a["canonical_id"], "name": a["canonical_name"], "industry": a["industry"],
-         "aliases": a["aliases"], "source_ids": a["source_ids"]}
-        for a in resolve_accounts(raw["accounts"])
+         "domain": a["domain"], "aliases": a["aliases"], "source_ids": a["source_ids"]}
+        for a in resolve_accounts(raw["accounts"], raw["contacts"])
     ]
     planners = [
         {"id": c["canonical_id"], "email": c["email"], "name": c["full_name"],
@@ -179,8 +179,8 @@ def test_resolution_is_idempotent_on_replay(tmp_path):
         accs = {a["id"]: a for a in copy.deepcopy(accounts)}
         for a in plan["accounts"]:
             accs[a["canonical_id"]] = {"id": a["canonical_id"], "name": a["canonical_name"],
-                                       "industry": a["industry"], "aliases": a["aliases"],
-                                       "source_ids": a["source_ids"]}
+                                       "industry": a["industry"], "domain": a["domain"],
+                                       "aliases": a["aliases"], "source_ids": a["source_ids"]}
         pls = {p["id"]: p for p in copy.deepcopy(planners)}
         for p in plan["planners"]:
             pls[p["canonical_id"]] = {"id": p["canonical_id"], "email": p["email"],

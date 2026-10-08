@@ -70,17 +70,25 @@
       <div class="canon">${esc(c.canonical)}</div>
     </div>`).join("");
 
+  const f2 = (x) => x.toFixed(2);
+  const splitRows = (items) => items.map((m) =>
+    `<div class="merge-row">
+      <div class="merge-variants">${m.groups.map((g) => `<span class="chip alias">${g.map(esc).join(" \u00b7 ")}</span>`)
+        .join('<span class="chip neq" title="names alone treat these as different companies">\u2260</span>')}</div>
+      <div class="merge-arrow">one company \u2192</div>
+      <div class="canon">${esc(m.canonical)}</div>
+    </div>`).join("");
+  const base = r.baseline, noisy = r.noisy;
   $("er-misses").innerHTML =
-    `<p class="fine" style="margin:0 0 6px">Scored against the generator's ground truth: <b>${r.false_merges} false merges</b>, so precision comes first.
-     Recall is the work ahead. ${r.miss_count} of ${r.truth_companies} companies still have a variant the ${r.fuzz_threshold}-point fuzzy
-     threshold can't connect (abbreviations, short forms, added words). Those stay separate until a person confirms them.</p>` +
-    r.misses.map((m) =>
-      `<div class="merge-row">
-        <div class="merge-variants">${m.groups.map((g) => `<span class="chip alias">${g.map(esc).join(" · ")}</span>`)
-          .join('<span class="chip neq" title="treated as different companies">≠</span>')}</div>
-        <div class="merge-arrow">should be →</div>
-        <div class="canon">${esc(m.canonical)}</div>
-      </div>`).join("");
+    `<p class="fine" style="margin:0 0 10px">Scored against the generator's ground truth. <b>Names alone:</b> precision ${f2(base.pairwise_precision)},
+     recall ${f2(base.pairwise_recall)} (${base.accounts_canonical} accounts). <b>With contact evidence:</b> precision ${f2(r.pairwise_precision)},
+     recall ${f2(r.pairwise_recall)} (${r.accounts_canonical} accounts, ${r.false_merges} false merges). Names still outrank contacts, and a cluster's domain must be
+     the majority of its members', so one stray contact can't merge two companies. These were left apart by names alone:</p>` +
+    splitRows(r.joined) +
+    (r.misses.length ? `<p class="fine"><b>Still split:</b> ${r.miss_count} of ${r.truth_companies} companies.</p>${splitRows(r.misses)}` : "") +
+    `<p class="fine"><b>Read that with care.</b> Every contact in this dataset has a company-derived email domain, which flatters the result.
+     With ${Math.round(noisy.fraction * 100)}% of contacts on free-mail addresses, recall is ${f2(noisy.pairwise_recall)} and precision stays ${f2(noisy.pairwise_precision)}:
+     in this data, missing evidence costs recall, not precision. With none usable it falls back to the names-only result.</p>`;
 
   /* ---------- the graph, drawn from a real account ---------- */
   function renderGraph() {

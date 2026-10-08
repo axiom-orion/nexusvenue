@@ -205,6 +205,16 @@ def eval_retrieval(k):
     click.echo(json.dumps(evaluate_retrieval(k=k), indent=2))
 
 
+@cli.command("eval-resolution")
+@click.option("--name-only", is_flag=True,
+              help="Score the name-only baseline instead of name + contact evidence.")
+def eval_resolution(name_only):
+    """Deterministic entity-resolution precision/recall against the generator's
+    ground truth (which name variants are really one company)."""
+    from nexusvenue.evals.resolution import evaluate_resolution
+    click.echo(json.dumps(evaluate_resolution(use_contacts=not name_only), indent=2))
+
+
 @cli.command()
 def demo():
     """End-to-end: generate -> etl -> embed -> retrieval eval."""

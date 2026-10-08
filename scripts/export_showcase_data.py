@@ -4,7 +4,8 @@ Runs the repository's own code over the seeded mock CRM (every company in it is
 fictional) -- no Neo4j and no API keys needed:
 
   REAL  entity resolution + merge report      etl.resolve, scored against the
-        generator's ground truth (pairwise precision/recall, and what it misses)
+        generator's ground truth (pairwise precision/recall: names alone vs with
+        contact evidence vs noisy contacts)
   REAL  hash-embedding hybrid retrieval       rag.embed.HashEmbedder, replicated in
         process against the resolved graph exactly as rag/retrieve.py builds it
   REAL  the SQL-vs-Cypher "live results"      computed over the resolved data
@@ -38,9 +39,9 @@ from pathlib import Path
 from nexusvenue.etl import load as L
 from nexusvenue.etl.extract import extract
 from nexusvenue.etl.resolve import FUZZ_THRESHOLD, resolve_accounts, resolve_contacts
+from nexusvenue.evals.resolution import degrade_contacts, evaluate_resolution
 from nexusvenue.graph.queries import SHOWCASE
 from nexusvenue.mockdata.generate import (
-    ACCOUNTS_BY_FLAVOR,
     DELTA_TS,
     SEED,
     T0,
@@ -59,6 +60,7 @@ FLAVOR = "acme"
 EMBED_DIM = 1536
 K = 6
 OPEN_STATUSES = ("Open", "Proposal Sent", "Negotiating")
+NOISE_FRACTION = 0.4   # share of contacts degraded to free-mail for the sensitivity check
 
 NOTE = (
     "Entity resolution, retrieval, the SQL-vs-Cypher results, the retrieval eval and the sync "
@@ -87,7 +89,7 @@ def _sentence(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 def build_world(raw: dict) -> dict:
-    accounts = resolve_accounts(raw["accounts"])
+    accounts = resolve_accounts(raw["accounts"], raw["contacts"])
     contacts = resolve_contacts(raw["contacts"])
     acct_by_src = {sid: a for a in accounts for sid in a["source_ids"]}
     plnr_by_src = {sid: c for c in contacts for sid in c["source_ids"]}
@@ -176,27 +178,9 @@ def dirty_examples(w: dict) -> dict:
 
 def resolution_block(w: dict) -> dict:
     raw, accounts = w["raw"], w["accounts"]
-    truth = {v: canonical for canonical, _, variants in ACCOUNTS_BY_FLAVOR[FLAVOR] for v in variants}
-    cluster_of = {sid: a["canonical_id"] for a in accounts for sid in a["source_ids"]}
-    rows = raw["accounts"]
-    tp = fp = fn = 0
-    for i in range(len(rows)):
-        for j in range(i + 1, len(rows)):
-            same_truth = truth[rows[i]["account_name"]] == truth[rows[j]["account_name"]]
-            same_pred = cluster_of[rows[i]["account_id"]] == cluster_of[rows[j]["account_id"]]
-            tp += same_truth and same_pred
-            fp += (not same_truth) and same_pred
-            fn += same_truth and (not same_pred)
-
-    by_truth: dict[str, dict] = defaultdict(lambda: defaultdict(list))
-    for r in rows:
-        by_truth[truth[r["account_name"]]][cluster_of[r["account_id"]]].append(r["account_name"])
-    splits = sorted(
-        ({"canonical": c, "groups": sorted(sorted(set(n)) for n in g.values())}
-         for c, g in by_truth.items() if len(g) > 1),
-        key=lambda s: (-len(s["groups"]), s["canonical"]),
-    )
-
+    now = evaluate_resolution(raw)
+    baseline = evaluate_resolution(raw, use_contacts=False)
+    noisy = evaluate_resolution(degrade_contacts(raw, NOISE_FRACTION))
     merged = sorted((a for a in accounts if len(a["source_ids"]) > 1),
                     key=lambda a: (-len(a["aliases"]), a["canonical_id"]))
     return {
@@ -206,13 +190,18 @@ def resolution_block(w: dict) -> dict:
         "contacts_source": len(raw["contacts"]),
         "contacts_canonical": len(w["contacts"]),
         "fuzz_threshold": FUZZ_THRESHOLD,
-        "pairwise_precision": round(tp / (tp + fp), 3) if tp + fp else 1.0,
-        "pairwise_recall": round(tp / (tp + fn), 3) if tp + fn else 1.0,
-        "false_merges": fp,
+        "pairwise_precision": now["pairwise_precision"],
+        "pairwise_recall": now["pairwise_recall"],
+        "false_merges": now["false_merges"],
+        "truth_companies": now["truth_companies"],
+        "baseline": {k: baseline[k] for k in ("accounts_canonical", "pairwise_precision", "pairwise_recall")},
+        "noisy": {"fraction": NOISE_FRACTION,
+                  **{k: noisy[k] for k in ("accounts_canonical", "pairwise_precision", "pairwise_recall")}},
         "clusters": [{"canonical": a["canonical_name"], "aliases": a["aliases"]} for a in merged[:8]],
-        "misses": splits[:6],
-        "miss_count": len(splits),
-        "truth_companies": len(ACCOUNTS_BY_FLAVOR[FLAVOR]),
+        # what name matching alone left split and contact evidence joined
+        "joined": baseline["misses"][:6],
+        "misses": now["misses"][:6],
+        "miss_count": now["miss_count"],
     }
 
 
@@ -508,7 +497,8 @@ def delta_block(db: Path, full_raw: dict, w: dict) -> dict:
     changed = {t: len(rows) for t, rows in raw.items() if rows}
 
     graph_accounts = [{"id": a["canonical_id"], "name": a["canonical_name"], "industry": a["industry"],
-                       "aliases": a["aliases"], "source_ids": a["source_ids"]} for a in w["accounts"]]
+                       "domain": a["domain"], "aliases": a["aliases"], "source_ids": a["source_ids"]}
+                      for a in w["accounts"]]
     graph_planners = [{"id": c["canonical_id"], "email": c["email"], "name": c["full_name"],
                        "title": c["title"], "agency_id": c["agency_id"], "source_ids": c["source_ids"]}
                       for c in w["contacts"]]
@@ -539,8 +529,8 @@ def delta_block(db: Path, full_raw: dict, w: dict) -> dict:
                 f"canonical node instead of forking a duplicate.")})
         elif cid in new_ids:
             changes.append({"path": "Brand-new account", "detail": (
-                f"'{r['account_name']}' ({r['property_code']}) has no fuzzy match to any canonical "
-                f"account, so a new Account node is minted ({cid}).")})
+                f"'{r['account_name']}' ({r['property_code']}) matches no canonical account by name or "
+                f"by contact evidence, so a new Account node is minted ({cid}).")})
     new_planner_ids = {p["canonical_id"] for p in plan["new_planners"]}
     for r in raw["contacts"]:
         pid = plan["src_to_planner"][r["contact_id"]]
