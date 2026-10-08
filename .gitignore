@@ -6,3 +6,7 @@ data/*.db
 data/embeddings_cache.json
 dist/
 build/
+
+# Cloudflare tooling
+.wrangler/
+node_modules/

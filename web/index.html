@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0a0e17" />
+  <title>NexusVenue — GraphRAG Sales Intelligence</title>
+  <meta name="description" content="An interactive walkthrough of the NexusVenue pipeline: messy multi-property CRM, entity resolution, a Neo4j knowledge graph, hybrid GraphRAG retrieval, a cited Win Strategy Blueprint, and a cross-family LLM judge. Every number is produced by running the repository's own code." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a0e17'/%3E%3Cpath d='M50 16 84 50 50 84 16 50Z' fill='%2338d9c7'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="nav" aria-label="Sections">
+    <div class="wrap nav-inner">
+      <div class="brand">Nexus<span class="dot">◆</span>Venue</div>
+      <div class="nav-links">
+        <a href="#mess">The mess</a>
+        <a href="#resolve">Resolution</a>
+        <a href="#graph">Graph</a>
+        <a href="#sql">SQL vs Cypher</a>
+        <a href="#graphrag">GraphRAG</a>
+        <a href="#judge">Judge</a>
+        <a href="#eval">Eval</a>
+        <a href="#sync">Sync</a>
+      </div>
+      <a class="nav-cta" href="#run">Run it →</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="eyebrow">GraphRAG · Knowledge Graph · LLM-as-a-judge</span>
+      <h1>Turning siloed CRM rows into <span class="grad">grounded sales intelligence</span></h1>
+      <p class="lede">Enterprise event sales is won on <em>relationships</em>: the agency with a track record at a sister property, the account spending across three cities under three legal names. Property-siloed CRMs miss all of it. NexusVenue rebuilds those facts as a knowledge graph and puts a grounded, evaluated LLM advisor on top.</p>
+      <div class="hero-cta">
+        <a class="btn primary" href="#graphrag">See the retrieval demo</a>
+        <a class="btn" href="#sql">Why a graph?</a>
+      </div>
+      <p class="hero-note">Every company on this page is fictional. Every number is produced by running the repository's own code.</p>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="stats" id="hero-stats"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="block" id="mess">
+      <div class="wrap">
+        <div class="kicker">The problem</div>
+        <h2>Three CRMs that were never integrated</h2>
+        <p class="sub">Each property runs its own Salesforce-shaped org. The same customer is entered under a different legal-name variant at each one, the same planner is duplicated with inconsistent spellings, and the knowledge that wins deals is trapped in free-text booking notes.</p>
+        <div class="grid3" id="properties"></div>
+        <h3 class="h-sub">Same company, different rows</h3>
+        <div class="card" id="dirty-accounts"></div>
+        <h3 class="h-sub">Same person, different spellings</h3>
+        <div class="card" id="dirty-contacts"></div>
+      </div>
+    </section>
+
+    <section class="block" id="resolve">
+      <div class="wrap">
+        <div class="kicker">Entity resolution</div>
+        <h2>Collapse the variants, keep the provenance</h2>
+        <p class="sub">RapidFuzz <code>token_sort_ratio ≥ 87</code> plus union-find clustering (after legal-suffix normalization) merges name variants into one canonical node per real-world entity. Contacts collapse on email. Every canonical node keeps its <code>aliases</code> and <code>source_ids</code> so nothing is lost.</p>
+        <div class="stats" id="resolve-stats"></div>
+        <h3 class="h-sub">Real merge clusters</h3>
+        <div class="card" id="merge-clusters"></div>
+        <h3 class="h-sub">What it still misses</h3>
+        <div class="card" id="er-misses"></div>
+      </div>
+    </section>
+
+    <section class="block" id="graph">
+      <div class="wrap">
+        <div class="kicker">The knowledge graph</div>
+        <h2>Relational rows become a graph</h2>
+        <p class="sub">Resolved entities load into Neo4j as a property graph. The relationships that used to be buried in junction tables and foreign keys become first-class, traversable edges. The account below is a real one from this dataset.</p>
+        <div class="card">
+          <div id="graph-svg"></div>
+          <div class="graph-legend">
+            <span class="gl-acct">Account</span><span class="gl-prop">Property</span>
+            <span class="gl-beo">BEO (booking)</span><span class="gl-plnr">Planner</span>
+            <span class="gl-agcy">Agency</span>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px" id="graph-model"></div>
+      </div>
+    </section>
+
+    <section class="block" id="sql">
+      <div class="wrap">
+        <div class="kicker">Why a graph?</div>
+        <h2>The questions that win deals are relationship questions</h2>
+        <p class="sub">Side by side: the legacy SQL and the graph query, with the results computed over this dataset. These are the queries a sales manager actually asks, and the ones a siloed relational CRM structurally can't answer.</p>
+        <div class="tabs" id="sql-tabs" role="tablist"></div>
+        <div id="sql-panel"></div>
+      </div>
+    </section>
+
+    <section class="block" id="graphrag">
+      <div class="wrap">
+        <div class="kicker">Hybrid GraphRAG</div>
+        <h2>An incoming RFP, answered from the graph</h2>
+        <p class="sub">Pick an RFP. Vector search over booking ops-notes finds semantically similar past events; graph traversal expands them into account portfolios and agency warm paths; then Claude synthesizes a cited Win Strategy Blueprint in which every claim traces to a booking id.</p>
+        <div class="rfp-picker" id="rfp-picker"></div>
+        <div class="rfp-query" id="rfp-query"></div>
+
+        <div class="stage-head"><span class="n">A</span><h3>Retrieved subgraph context</h3></div>
+        <p class="fine" style="margin-top:-6px;margin-bottom:14px">Top 6 vector hits over booking ops-notes, using the offline hash embedding backend. <span class="gold-mark">✓ gold</span> marks hits in the seeded relevance set.</p>
+        <div id="retrieval-hits"></div>
+        <div class="ctx-cols">
+          <div><h4 class="col-title">Account portfolios</h4><div id="portfolios"></div></div>
+          <div><h4 class="col-title">Agency relationships</h4><div id="agencies"></div></div>
+        </div>
+
+        <div class="stage-head"><span class="n">B</span><h3>Win Strategy Blueprint</h3></div>
+        <p class="fine" style="margin-top:-6px;margin-bottom:14px">A <b>representative sample</b>: assembled from the real retrieved context above to show the output shape, and checked against the real Pydantic schema. It is not model output. <code>nexusvenue ask</code> writes the live one with Claude.</p>
+        <div class="bp" id="blueprint"></div>
+      </div>
+    </section>
+
+    <section class="block" id="judge">
+      <div class="wrap">
+        <div class="kicker">LLM-as-a-judge</div>
+        <h2>Grade the output, across model families</h2>
+        <p class="sub">A reference-less adversarial judge scores each blueprint against the retrieved context only, and enumerates any claim the context doesn't support. It runs on Claude, Gemini <em>and</em> Grok, because a judge over-rates its own family's output (self-preference bias), so cross-family agreement is the real signal.</p>
+        <h3 class="h-sub" style="margin-top:0">The gate</h3>
+        <div class="rubric-grid" id="judge-rubric"></div>
+        <p class="fine">The two numeric thresholds are enforced in code for every model family. The model only makes the call a number can't: whether a hallucination it listed is <b>material</b>.</p>
+        <div id="judge-panel"></div>
+      </div>
+    </section>
+
+    <section class="block" id="eval">
+      <div class="wrap">
+        <div class="kicker">Deterministic eval</div>
+        <h2>Retrieval precision / recall @k, in CI</h2>
+        <p class="sub">The judge catches generation failures; a seeded gold set catches retrieval regressions deterministically: no keys, no LLM, and it runs in CI on every commit. These numbers are computed here with the offline <code>hash</code> embedding backend.</p>
+        <div class="tbl-wrap"><table id="eval-table"></table></div>
+        <div class="macro" id="eval-macro"></div>
+        <p class="fine" id="eval-note"></p>
+      </div>
+    </section>
+
+    <section class="block" id="sync">
+      <div class="wrap">
+        <div class="kicker">Incremental sync</div>
+        <h2>The next business day, without a rebuild</h2>
+        <p class="sub">A watermark on <code>last_modified</code> pulls only changed rows. The hard part is entity resolution: a delta row must resolve against canonical nodes <em>already in the graph</em>, or the two paths disagree and the graph forks. Each change below exercises a different code path, and all of it is idempotent.</p>
+        <div class="card"><div class="timeline" id="delta-timeline"></div></div>
+        <pre class="report-block" id="delta-report"></pre>
+        <div class="callout" style="margin-top:16px" id="delta-idem"></div>
+      </div>
+    </section>
+
+    <section class="block" id="run">
+      <div class="wrap">
+        <div class="kicker">Run it yourself</div>
+        <h2>Everything here is reproducible</h2>
+        <p class="sub">The whole pipeline runs locally against a Docker Neo4j. The numbers on this page come from a keyless run of the repository's own code. Add API keys for the full LLM loop.</p>
+        <div class="foot-grid">
+          <div>
+            <pre class="foot-cmd"><span class="cm"># 1. Neo4j + install</span>
+docker compose up -d
+pip install -e .
+
+<span class="cm"># 2. Build the graph, score retrieval (no keys)</span>
+nexusvenue <span class="c">demo</span>
+
+<span class="cm"># 3. The full GraphRAG loop (needs keys)</span>
+nexusvenue <span class="c">ask</span> "3-day leadership summit for 150
+  executives, botanical citrus mocktail
+  receptions, seamless VIP transport." --with-judge
+
+<span class="cm"># replay a historical RFP without leaking the future</span>
+nexusvenue <span class="c">ask</span> "..." --as-of 2025-03-01
+
+<span class="cm"># regenerate this page's data</span>
+python scripts/export_showcase_data.py</pre>
+          </div>
+          <div>
+            <div class="stack-list" id="stack"></div>
+          </div>
+        </div>
+        <p class="foot-note" id="foot-note"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
